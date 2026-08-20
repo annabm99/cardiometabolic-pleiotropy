@@ -1,0 +1,55 @@
+# Example path configuration for the cardiovascular pleiotropy code archive.
+# These are placeholders only. The publication repository does not include data,
+# reference panels, generated results, environments, LDSC, PleioFDR, PLINK, or
+# FUMA outputs.
+
+project_dir: /path/to/cardiovascular_pleiotropies
+
+directories:
+  raw_sumstats: /path/to/raw_gwas_sumstats
+  formatted_sumstats: /path/to/0-Download/2-Formatted
+  liftover_sumstats: /path/to/0-Download/3-Liftover
+  munged_sumstats: /path/to/0-Download/4-Munge
+  filtered_sumstats: /path/to/0-Download/5-Filtered
+  ldsc_heritability: /path/to/1-LDSC/1-Heritability
+  ldsc_correlation: /path/to/1-LDSC/2-Correlation
+  pleiofdr_mat: /path/to/2-PleioFDR/1-MatFormat
+  pleiofdr_pairs: /path/to/2-PleioFDR/2-PairedAnalysis
+  pleiotropic_snps: /path/to/2-PleioFDR/3-PleiotropicSNPs/b-All
+  directionality_split: /path/to/3-Directionality/1-Separate/b-All
+  directionality_aggregate: /path/to/3-Directionality/2-Aggregate
+  directionality_stats: /path/to/3-Directionality/3-StatisticalComparison
+  fuma_pleiotropic_outputs: /path/to/4-FUMA/5-FUMAOut/a-Pleiotropic
+  enrichment_collect: /path/to/5-EnrichmentAnalysis/1-Collect
+  enrichment_filter: /path/to/5-EnrichmentAnalysis/2-Filter
+  enrichment_collapse: /path/to/5-EnrichmentAnalysis/3-Collapse
+  final_tables: /path/to/FinalTables
+  figures: /path/to/Figures
+
+references:
+  variants_tsv_bgz: /path/to/reference/variants.tsv.bgz
+  common_vcf_gz: /path/to/reference/00-common_all.vcf.gz
+  kg_snpa1a2_ref: /path/to/reference/1kgPhase3_SNPA1A2.ref.gz
+  pleiofdr_ref_txt: /path/to/reference/9545380.ref
+  pleiofdr_ref_mat: /path/to/reference/ref9545380_1kgPhase3eur_LDr2p1.mat
+  ldsc_eur_w_ld_chr: /path/to/reference/eur_w_ld_chr
+  plink_bfile_chr_template: /path/to/reference/ref9545380_FUMA/chr@
+
+external_software:
+  ldsc: /path/to/ldsc
+  pleiofdr: /path/to/pleiofdr
+  plink: plink
+  matlab: matlab
+  fuma: https://fuma.ctglab.nl/
+
+environment_variables:
+  CVP_PROJECT_DIR: /path/to/cardiovascular_pleiotropies
+  CVP_FINAL_TABLES_DIR: /path/to/FinalTables
+  CVP_FIGURES_DIR: /path/to/Figures
+  CVP_1KG_SNPA1A2_REF: /path/to/reference/1kgPhase3_SNPA1A2.ref.gz
+  CVP_PLEIOFDR_DIR: /path/to/pleiofdr
+  CVP_PLEIOFDR_CONFIG_TEMPLATE: /path/to/pleiofdr/config_default.txt
+  CVP_PLEIOFDR_REF_MAT: /path/to/reference/ref9545380_1kgPhase3eur_LDr2p1.mat
+  CVP_FUMA_PLEIOTROPIC_OUT_DIR: /path/to/4-FUMA/5-FUMAOut/a-Pleiotropic
+  CVP_NONREDUNDANT_PATHWAYS: /path/to/all_fuma_pathways_nonredundant.tsv
+  CVP_DIRECTIONALITY_AGG_DIR: /path/to/3-Directionality/2-Aggregate

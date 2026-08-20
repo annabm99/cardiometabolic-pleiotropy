@@ -1,0 +1,84 @@
+# Final phenotype set used by the analysis.
+# Suffix convention: _d = disease, _t = quantitative trait.
+
+phenotypes:
+  CAD_d:
+    label: Coronary artery disease
+    abbreviation: CAD
+    type: disease
+    source: GCST000998
+    n_total: 86995
+    n_cases: 22233
+    n_controls: 64762
+  T2D_d:
+    label: Type 2 diabetes
+    abbreviation: T2D
+    type: disease
+    source: T2D-noUKBB
+    n_total: 441894
+    n_cases: 18197
+    n_controls: 423697
+  HT_d:
+    label: Hypertension
+    abbreviation: HT
+    type: disease
+    source: GCST90086088
+    n_total: 28391
+    n_cases: 28246
+    n_controls: null
+  STR_d:
+    label: Stroke
+    abbreviation: STR
+    type: disease
+    source: MEGASTROKE
+    n_total: 446696
+    n_cases: 40585
+    n_controls: 406111
+  BMI_t:
+    label: Body mass index
+    abbreviation: BMI
+    type: trait
+    source: UK Biobank Neale Lab 21001_raw
+    n_total: 359983
+  WC_t:
+    label: Waist circumference
+    abbreviation: WC
+    type: trait
+    source: UK Biobank Neale Lab 48_raw
+    n_total: 360564
+  SBP_t:
+    label: Systolic blood pressure
+    abbreviation: SBP
+    type: trait
+    source: UK Biobank Neale Lab 4080_raw
+    n_total: 340159
+  DBP_t:
+    label: Diastolic blood pressure
+    abbreviation: DBP
+    type: trait
+    source: UK Biobank Neale Lab 4079_raw
+    n_total: 340162
+  TGL_t:
+    label: Triglycerides
+    abbreviation: TGL
+    type: trait
+    source: UK Biobank Neale Lab 30870_raw
+    n_total: 343991
+  LDL_t:
+    label: LDL cholesterol
+    abbreviation: LDL
+    type: trait
+    source: UK Biobank Neale Lab 30780_raw
+    n_total: 343621
+  HDL_t:
+    label: HDL cholesterol
+    abbreviation: HDL
+    type: trait
+    source: UK Biobank Neale Lab 30760_raw
+    n_total: 315133
+  FG_t:
+    label: Fasting glucose
+    abbreviation: FG
+    type: trait
+    source: UK Biobank Neale Lab 30740_raw
+    n_total: 314914

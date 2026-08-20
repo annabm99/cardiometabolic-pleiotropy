@@ -1,0 +1,43 @@
+# Data and reference files
+*.bgz
+*.bgen
+*.bed
+*.bim
+*.fam
+*.vcf
+*.vcf.gz
+*.sumstats.gz
+*.tsv.gz
+*.csv.gz
+*.mat
+
+# Generated tables, figures, and reports
+FinalTables/
+/Figures/
+results/
+outputs/
+*.png
+*.svg
+*.pdf
+*.xlsx
+*.tex
+
+# Logs and scheduler output
+*.log
+*.out
+slurm-*.out
+log.*.out
+log.*.err
+
+# Environments and caches
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+Environments/
+
+# Editor files
+*.swp
+.DS_Store
+.Rhistory

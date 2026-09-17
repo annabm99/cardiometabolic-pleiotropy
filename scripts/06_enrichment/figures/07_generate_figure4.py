@@ -259,7 +259,7 @@ plt.savefig(
 # =============================================================================
 
 summary = pd.read_csv(
-    FINAL_TABLES_DIR / "Table10_ThemeSummary.csv"
+    FINAL_TABLES_DIR / "Table10_ThemePermutation.csv"
 )
 
 # =============================================================================
@@ -279,7 +279,8 @@ plot_df = (
         [
             "Theme",
             "Positive_Percent",
-            "Negative_Percent"
+            "Negative_Percent",
+            "Delta_Percent"
         ]
     ]
     .drop_duplicates()
@@ -316,59 +317,23 @@ heatmap_df = (
         [
             "Theme",
             "Positive_Percent",
-            "Negative_Percent"
+            "Negative_Percent",
+            "Delta_Percent"
         ]
     ]
     .set_index("Theme")
 )
 
-heatmap_df["Fold_Change"] = (
-    heatmap_df["Positive_Percent"] /
-    heatmap_df["Negative_Percent"]
+# =============================================================================
+# DESCRIPTIVE DIFFERENCE
+# =============================================================================
+
+max_abs_delta = (
+    heatmap_df["Delta_Percent"]
+    .abs()
+    .max()
 )
 
-heatmap_df["Fold_Magnitude"] = (
-    np.abs(
-        np.log2(
-            heatmap_df["Fold_Change"]
-        )
-    )
-)
-
-from matplotlib.colors import TwoSlopeNorm
-
-fold_norm = TwoSlopeNorm(
-    vmin=heatmap_df["Fold_Change"].min(),
-    vcenter=1.0,
-    vmax=heatmap_df["Fold_Change"].max()
-)
-
-theme_stats = (
-    summary[
-        ["Theme", "Significance"]
-    ]
-    .drop_duplicates()
-)
-
-theme_stats["Theme"] = (
-    theme_stats["Theme"]
-    .str.replace(r"\\n", "\n", regex=True)
-)
-
-sig_map = dict(
-    zip(
-        theme_stats["Theme"],
-        theme_stats["Significance"]
-    )
-)
-
-print(
-    summary[
-        ["Theme", "P_Value", "FDR", "Significance"]
-    ]
-    .drop_duplicates()
-    .sort_values("FDR")
-)
 # =============================================================================
 # CUSTOM MATRIX
 # =============================================================================
@@ -377,32 +342,18 @@ from matplotlib.patches import Rectangle
 from matplotlib import cm
 
 fig, ax = plt.subplots(
-    figsize=(7, 10)
+    figsize=(10, 10)
 )
 
-plt.subplots_adjust(left=0.45)
+plt.subplots_adjust(left=0.45, right=0.98, bottom=0.12)
 
 n_rows = len(heatmap_df)
 
 red_cmap = cm.Reds
 blue_cmap = cm.Blues
-grey_cmap = cm.Greys
 
 max_pos = heatmap_df["Positive_Percent"].max()
 max_neg = heatmap_df["Negative_Percent"].max()
-
-max_fold_mag = (
-    heatmap_df["Fold_Magnitude"]
-    .max()
-)
-
-from matplotlib.cm import ScalarMappable
-from matplotlib.colors import Normalize
-
-grey_norm = Normalize(
-    vmin=0,
-    vmax=max_fold_mag
-)
 
 for i, (theme, row) in enumerate(heatmap_df.iterrows()):
 
@@ -410,24 +361,7 @@ for i, (theme, row) in enumerate(heatmap_df.iterrows()):
 
     pos = row["Positive_Percent"]
     neg = row["Negative_Percent"]
-    fold = row["Fold_Change"]
-
-    star = sig_map.get(theme, "")
-
-    if pd.isna(star):
-        star = ""
-    
-    if star != "":
-        ax.text(
-            3.15,
-            y + 0.5,
-            star,
-            ha="left",
-            va="center",
-            fontsize=16,
-            fontweight="bold",
-            color=TEXT
-        )
+    delta = row["Delta_Percent"]
 
     # Positive
     ax.add_patch(
@@ -457,14 +391,27 @@ for i, (theme, row) in enumerate(heatmap_df.iterrows()):
         )
     )
 
-    grey_value = 1 - fold_norm(fold)
+    delta_intensity = (
+        abs(delta) / max_abs_delta
+        if max_abs_delta > 0
+        else 0
+    )
+
+    grey_value = (
+        0.95
+        - 0.75 * delta_intensity
+    )
 
     ax.add_patch(
         Rectangle(
             (2, y),
             1,
             1,
-            facecolor=(grey_value, grey_value, grey_value),
+            facecolor=(
+                grey_value,
+                grey_value,
+                grey_value
+            ),
             edgecolor="lightgrey",
             linewidth=1.5
         )
@@ -507,9 +454,9 @@ for i, (theme, row) in enumerate(heatmap_df.iterrows()):
         color=neg_color
     )
 
-    fold_label = f"{fold:.2f}×"
-    
-    fold_text_color = (
+    delta_label = f"{delta:+.1f}"
+
+    delta_text_color = (
         "white"
         if grey_value < 0.5
         else TEXT
@@ -518,30 +465,30 @@ for i, (theme, row) in enumerate(heatmap_df.iterrows()):
     ax.text(
         2.5,
         y + 0.5,
-        fold_label,
+        delta_label,
         ha="center",
         va="center",
         fontsize=16,
         fontweight="bold",
-        color=fold_text_color
+        color=delta_text_color
     )
 
-ax.set_xlim(0, 3.36)
+ax.set_xlim(0, 3.05)
 ax.set_ylim(0, n_rows)
 
-ax.set_xticks(
-    [0.5, 1.5, 2.5]
-)
+ax.set_xticks([0.5, 1.5, 2.5])
 
 ax.set_xticklabels(
     [
         "Concordant",
         "Discordant",
-        "Fold\nChange"
+        "Δ percentage\npoints"
     ],
     fontsize=16,
     fontweight="bold"
 )
+
+ax.tick_params(axis="x", length=0, pad=8)
 
 ax.set_yticks(
     np.arange(n_rows) + 0.5
@@ -567,25 +514,11 @@ for spine in ax.spines.values():
 plt.tight_layout()
 
 ax.set_title(
-    "B. Distinct Biological Themes Characterize\nPositive and negative Pleiotropy",
+    "B. Biological Theme Profiles of\nConcordant and Discordant Pleiotropy",
     fontsize=22,
     fontweight="bold",
     color=TEXT,
     pad=20
-)
-
-sm = ScalarMappable(
-    cmap=grey_cmap,
-    norm=grey_norm
-)
-
-sm.set_array([])
-
-cbar = plt.colorbar(
-    sm,
-    ax=ax,
-    fraction=0.03,
-    pad=0.08
 )
 
 # =============================================================================

@@ -67,9 +67,18 @@ for pair_dir in all_pair_dirs:
 
     pair_name = pair_dir.name
 
-    if any(trait in pair_name for trait in EXCLUDED_TRAITS):
+    # Dis-Dis is a separate disease-disease analysis and must not
+    # enter the disease-trait convergence analysis.
+    if pair_name == "Dis-Dis":
         removed_pairs.append(pair_name)
+        continue
+
+    if any(trait in pair_name for trait in EXCLUDED_TRAITS):
+
+        removed_pairs.append(pair_name)
+
     else:
+
         pair_dirs.append(pair_dir)
 
 print("\n=================================================")
@@ -179,7 +188,12 @@ for pair_dir in pair_dirs:
             sep="\t"
         )
 
-        loci["Phenotype_Pair"] = pair_name
+        loci["Phenotype_Pair"] = (
+            pair_name
+            .replace("_d", "")
+            .replace("_t", "")
+        )
+
         loci["Pleiotropy_Type"] = pleio_type
 
         all_loci.append(loci)
@@ -611,10 +625,30 @@ gene_evidence["GenomicLocus"] = (
     .astype(str)
 )
 
+# Some FUMA genes are assigned to more than one genomic risk locus
+# (e.g. "63:64"). Expand these into one gene-locus observation per
+# constituent FUMA locus before mapping to merged loci.
+
+gene_evidence["GenomicLocus"] = (
+    gene_evidence["GenomicLocus"]
+    .str.split(":")
+)
+
+gene_evidence = gene_evidence.explode(
+    "GenomicLocus",
+    ignore_index=True
+)
+
+gene_evidence["GenomicLocus"] = (
+    gene_evidence["GenomicLocus"]
+    .str.strip()
+)
+
 table4_membership["GenomicLocus"] = (
     table4_membership["GenomicLocus"]
     .astype(str)
 )
+
 
 gene_evidence = gene_evidence.merge(
     table4_membership[
@@ -683,23 +717,29 @@ print(
 
 gene_summary = []
 
-for gene, g in gene_evidence.groupby("symbol"):
+for ensg, g in gene_evidence.groupby("ensg"):
 
     diseases = set()
 
     for d in g["Disease"]:
+        diseases |= {
+            x for x in d.split("|")
+            if x
+        }
 
-        diseases |= set(
-            d.split("|")
-        )
+    symbol = (
+        g["symbol"].dropna().iloc[0]
+        if g["symbol"].notna().any()
+        else ensg
+    )
 
     gene_summary.append({
 
         "symbol":
-            gene,
+            symbol,
 
         "Ensembl_ID":
-            g["ensg"].iloc[0],
+            ensg,
 
         "Gene_Type":
             g["type"].iloc[0],
@@ -749,12 +789,13 @@ table5_rows = []
 for _, gene in four_disease.iterrows():
 
     evidence = gene_evidence[
-        gene_evidence["symbol"]
-        == gene["symbol"]
+        gene_evidence["ensg"]
+        == gene["Ensembl_ID"]
     ]
 
     chol = chol_gene_evidence[
-        chol_gene_evidence["symbol"] == gene["symbol"]
+        chol_gene_evidence["ensg"]
+        == gene["Ensembl_ID"]
     ]
 
     ml_ids = sorted(
@@ -868,11 +909,21 @@ table5_gene_evidence = gene_evidence.copy()
 
 summary_rows = []
 
-for gene, g in gene_evidence.groupby("symbol"):
+for ensg, g in gene_evidence.groupby("ensg"):
 
     diseases = set()
+
     for d in g["Disease"]:
-        diseases |= set(d.split("|"))
+        diseases |= {
+            x for x in d.split("|")
+            if x
+        }
+
+    symbol = (
+        g["symbol"].dropna().iloc[0]
+        if g["symbol"].notna().any()
+        else ensg
+    )
 
     merged_loci = sorted(
         set(
@@ -912,7 +963,7 @@ for gene, g in gene_evidence.groupby("symbol"):
     ##############################################################################
 
     chol = chol_gene_evidence[
-        chol_gene_evidence["symbol"] == gene
+        chol_gene_evidence["ensg"] == ensg
     ]
 
     chol_conc = sorted(
@@ -932,10 +983,10 @@ for gene, g in gene_evidence.groupby("symbol"):
     summary_rows.append({
 
         "symbol":
-            gene,
+            symbol,
 
         "Ensembl_ID":
-            g["ensg"].iloc[0],
+            ensg,
 
         "Gene_Type":
             g["type"].iloc[0],

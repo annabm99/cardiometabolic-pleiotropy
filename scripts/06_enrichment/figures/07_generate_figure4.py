@@ -57,7 +57,11 @@ annotation_rows = [
     "upstream"
 ]
 
-df = df[df["Annotation"].isin(annotation_rows)].copy()
+df = df[
+    (df["Layer"] == "Variant-level")
+    & (df["Statistic"] == "Count (% of unique lead SNPs)")
+    & (df["Annotation"].isin(annotation_rows))
+].copy()
 
 print(df.dtypes)
 
@@ -212,13 +216,13 @@ ax.set_yticklabels(
 )
 
 ax.set_xlabel(
-    "Percentage of annotated variants",
+    "Percentage of unique lead SNPs",
     fontsize=16,
     color=TEXT
 )
 
 ax.set_title(
-    "A. Concordant and Discordant Loci Share Similar Functional Annotation Composition",
+    "A. Functional Annotation Profiles of Concordant and Discordant Lead Variants",
     fontsize=TITLE_SIZE,
     fontweight="bold",
     color=TEXT,

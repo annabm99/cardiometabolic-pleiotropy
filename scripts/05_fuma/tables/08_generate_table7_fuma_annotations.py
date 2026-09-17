@@ -197,16 +197,21 @@ def load_gene_data(pair_dirs):
 
     return positive_genes, negative_genes
 
-
 # ==========================================================
 # SUMMARY FUNCTIONS
 # ==========================================================
 
 def summarize_functional_annotations(pos_snps, neg_snps):
+    """
+    Summarize functional consequence categories among unique lead SNPs.
+
+    Percentages are calculated relative to the total number of unique
+    lead SNPs in each directional class.
+    """
 
     annotations = sorted(
-        set(pos_snps["func"].dropna()) |
-        set(neg_snps["func"].dropna())
+        set(pos_snps[FUNC_COL].dropna()) |
+        set(neg_snps[FUNC_COL].dropna())
     )
 
     total_pos = len(pos_snps)
@@ -215,47 +220,110 @@ def summarize_functional_annotations(pos_snps, neg_snps):
     rows = []
 
     for annotation in annotations:
-
-        n_pos = (pos_snps["func"] == annotation).sum()
-        n_neg = (neg_snps["func"] == annotation).sum()
+        n_pos = (pos_snps[FUNC_COL] == annotation).sum()
+        n_neg = (neg_snps[FUNC_COL] == annotation).sum()
 
         rows.append({
+            "Layer": "Variant-level",
             "Annotation": annotation,
-            "Concordant":
-                f"{n_pos} ({100*n_pos/total_pos:.1f}%)",
-            "Discordant":
-                f"{n_neg} ({100*n_neg/total_neg:.1f}%)"
+            "Statistic": "Count (% of unique lead SNPs)",
+            "Concordant": f"{n_pos} ({100*n_pos/total_pos:.1f}%)",
+            "Discordant": f"{n_neg} ({100*n_neg/total_neg:.1f}%)"
         })
 
     return pd.DataFrame(rows)
 
 
-def summarize_numeric_metric(pos_df,
-                             neg_df,
-                             column,
-                             label,
-                             digits=2):
+def summarize_numeric_metric(
+    pos_df,
+    neg_df,
+    column,
+    label,
+    layer,
+    digits=3
+):
+    """
+    Summarize a numeric annotation separately for concordant and
+    discordant entities.
+
+    Reports total N, available N, missingness, mean, median and IQR.
+    """
 
     pos = pd.to_numeric(pos_df[column], errors="coerce")
     neg = pd.to_numeric(neg_df[column], errors="coerce")
 
-    return pd.DataFrame([{
-        "Annotation": label,
-        "Concordant": round(pos.mean(skipna=True), digits),
-        "Discordant": round(neg.mean(skipna=True), digits)
-    }])
+    def stats(x):
+        n_total = len(x)
+        n_available = x.notna().sum()
+        n_missing = x.isna().sum()
+        missing_pct = 100 * n_missing / n_total if n_total else np.nan
+
+        return {
+            "N total": n_total,
+            "N available": n_available,
+            "Missing, n (%)": (
+                f"{n_missing} ({missing_pct:.1f}%)"
+            ),
+            "Mean": round(x.mean(), digits),
+            "Median": round(x.median(), digits),
+            "IQR": (
+                f"{x.quantile(0.25):.{digits}f}–"
+                f"{x.quantile(0.75):.{digits}f}"
+            )
+        }
+
+    pos_stats = stats(pos)
+    neg_stats = stats(neg)
+
+    rows = []
+
+    for statistic in [
+        "N total",
+        "N available",
+        "Missing, n (%)",
+        "Mean",
+        "Median",
+        "IQR"
+    ]:
+        rows.append({
+            "Layer": layer,
+            "Annotation": label,
+            "Statistic": statistic,
+            "Concordant": pos_stats[statistic],
+            "Discordant": neg_stats[statistic]
+        })
+
+    return pd.DataFrame(rows)
+
 
 # ==========================================================
 # BUILD TABLE 7
 # ==========================================================
 
-def build_table7(pos_snps,
-                 neg_snps,
-                 pos_genes,
-                 neg_genes):
+def build_table7(
+    pos_snps,
+    neg_snps,
+    pos_genes,
+    neg_genes
+):
+    """
+    Build a layered annotation summary.
+
+    Variant-level:
+        - functional consequence distribution
+        - CADD
+        - RegulomeDB
+
+    Mapped-gene-level:
+        - pLI
+        - ncRVIS
+
+    Variant and gene entities are deduplicated within each
+    direction before reaching this function.
+    """
 
     # ------------------------------------------------------
-    # Functional annotation summary
+    # Variant-level functional consequence composition
     # ------------------------------------------------------
 
     func_table = summarize_functional_annotations(
@@ -263,62 +331,76 @@ def build_table7(pos_snps,
         neg_snps
     )
 
-    # Sort by total abundance
-    func_table["Total"] = (
-        func_table["Concordant"].str.extract(r"(^\d+)").astype(int)
-        + func_table["Discordant"].str.extract(r"(^\d+)").astype(int)
+    # Sort consequence categories by combined abundance.
+    func_table["_Total"] = (
+        func_table["Concordant"]
+        .str.extract(r"(^\d+)")[0]
+        .astype(int)
+        +
+        func_table["Discordant"]
+        .str.extract(r"(^\d+)")[0]
+        .astype(int)
     )
 
     func_table = (
         func_table
-        .sort_values("Total", ascending=False)
-        .drop(columns="Total")
+        .sort_values("_Total", ascending=False)
+        .drop(columns="_Total")
         .reset_index(drop=True)
     )
 
     # ------------------------------------------------------
-    # Numeric summaries
+    # Variant-level numeric annotations
     # ------------------------------------------------------
 
-    metric_tables = [
+    cadd_table = summarize_numeric_metric(
+        pos_snps,
+        neg_snps,
+        CADD_COL,
+        "CADD score",
+        "Variant-level"
+    )
 
-        summarize_numeric_metric(
-            pos_snps,
-            neg_snps,
-            "CADD",
-            "Average CADD score"
-        ),
+    rdb_table = summarize_numeric_metric(
+        pos_snps,
+        neg_snps,
+        RDB_COL,
+        "RegulomeDB score",
+        "Variant-level"
+    )
 
-        summarize_numeric_metric(
-            pos_snps,
-            neg_snps,
-            "RDB",
-            "Average RegulomeDB score"
-        ),
+    # ------------------------------------------------------
+    # Mapped-gene-level constraint annotations
+    # ------------------------------------------------------
 
-        summarize_numeric_metric(
-            pos_genes,
-            neg_genes,
-            "pLI",
-            "Average pLI"
-        ),
+    pli_table = summarize_numeric_metric(
+        pos_genes,
+        neg_genes,
+        PLI_COL,
+        "pLI",
+        "Mapped-gene-level"
+    )
 
-        summarize_numeric_metric(
-            pos_genes,
-            neg_genes,
-            "ncRVIS",
-            "Average ncRVIS"
-        )
-
-    ]
+    ncrvis_table = summarize_numeric_metric(
+        pos_genes,
+        neg_genes,
+        NCRVIS_COL,
+        "ncRVIS",
+        "Mapped-gene-level"
+    )
 
     final_table = pd.concat(
-        [func_table] + metric_tables,
+        [
+            func_table,
+            cadd_table,
+            rdb_table,
+            pli_table,
+            ncrvis_table
+        ],
         ignore_index=True
     )
 
     return final_table
-
 
 # ==========================================================
 # EXPORT
@@ -348,10 +430,16 @@ def export_table(table):
         index=False
     )
 
-    table.to_excel(
-        xlsx_file,
-        index=False
-    )
+    try:
+        table.to_excel(
+            xlsx_file,
+            index=False
+        )
+    except ImportError:
+        print(
+            "\nWARNING: Excel output was not generated because "
+            "openpyxl is not installed in the current Python environment."
+        )
 
     table.to_latex(
         tex_file,
@@ -359,11 +447,16 @@ def export_table(table):
         escape=False
     )
 
-    print("\nTable exported successfully.")
-    print(csv_file)
-    print(xlsx_file)
-    print(tex_file)
+    print("\nTable export completed.")
 
+    print(f"CSV:   {csv_file}")
+
+    if os.path.exists(xlsx_file):
+        print(f"Excel: {xlsx_file}")
+    else:
+        print("Excel: not generated")
+
+    print(f"LaTeX: {tex_file}")
 
 # ==========================================================
 # MAIN

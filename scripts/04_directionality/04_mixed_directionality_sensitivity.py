@@ -29,6 +29,7 @@ import os
 import sys
 
 import pandas as pd
+import numpy as np
 from scipy.stats import mannwhitneyu
 from statsmodels.stats.multitest import multipletests
 
@@ -39,6 +40,9 @@ TRANSLATION = {
     "STR": "Stroke",
     "T2D": "Type 2 Diabetes",
 }
+
+N_DOWNSAMPLE_ITERATIONS = 5000
+RANDOM_SEED = 20260917
 
 
 def load_dataset(path):
@@ -75,16 +79,151 @@ def compare_abs_z(pos_df, neg_df):
         alternative="two-sided"
     )
 
+    # Positive values mean that discordant observations
+    # tend to have larger |Z| than concordant observations.
+    rank_biserial = (
+        1
+        - (2 * stat) / (len(pos) * len(neg))
+    )
+
     return {
         "N_concordant": len(pos),
         "N_discordant": len(neg),
-        "Concordant_median_abs_z": pos.median(),
-        "Discordant_median_abs_z": neg.median(),
-        "Concordant_mean_abs_z": pos.mean(),
-        "Discordant_mean_abs_z": neg.mean(),
-        "Mann_Whitney_U": stat,
-        "P_value": pval,
+
+        "Concordant_median_abs_z":
+            pos.median(),
+
+        "Discordant_median_abs_z":
+            neg.median(),
+
+        "Concordant_mean_abs_z":
+            pos.mean(),
+
+        "Discordant_mean_abs_z":
+            neg.mean(),
+
+        "Mann_Whitney_U":
+            stat,
+
+        "P_value":
+            pval,
+
+        "Rank_biserial_discordant_gt_concordant":
+            rank_biserial,
     }
+
+def downsample_power_diagnostic(
+    pos_df,
+    neg_df,
+    target_n,
+    observed_pure_p,
+    observed_pure_effect,
+    seed,
+):
+
+    """
+    Downsample the original discordant group to the size of the
+    pure-discordant group.
+
+    This estimates how much weakening of the Mann-Whitney P-value
+    would be expected from sample-size reduction alone, while
+    retaining the original discordant-group composition.
+    """
+
+    pos = (
+        pos_df["abs_z"]
+        .dropna()
+        .to_numpy()
+    )
+
+    neg = (
+        neg_df["abs_z"]
+        .dropna()
+        .to_numpy()
+    )
+
+    if target_n > len(neg):
+        raise ValueError(
+            "Target downsample size exceeds discordant sample size"
+        )
+
+    rng = np.random.default_rng(seed)
+
+    rows = []
+
+    for i in range(N_DOWNSAMPLE_ITERATIONS):
+
+        sampled_neg = rng.choice(
+            neg,
+            size=target_n,
+            replace=False
+        )
+
+        stat, pval = mannwhitneyu(
+            pos,
+            sampled_neg,
+            alternative="two-sided"
+        )
+
+        rank_biserial = (
+            1
+            - (2 * stat) /
+            (len(pos) * len(sampled_neg))
+        )
+
+        rows.append({
+            "Iteration": i + 1,
+            "P_value": pval,
+            "Rank_biserial":
+                rank_biserial,
+        })
+
+    reps = pd.DataFrame(rows)
+
+    summary = {
+
+        "Downsample_iterations":
+            N_DOWNSAMPLE_ITERATIONS,
+
+        "Downsample_target_N":
+            target_n,
+
+        "Downsample_median_P":
+            reps["P_value"].median(),
+
+        "Downsample_P_2.5pct":
+            reps["P_value"].quantile(0.025),
+
+        "Downsample_P_97.5pct":
+            reps["P_value"].quantile(0.975),
+
+        "Downsample_percent_P_lt_0.05":
+            100 * (
+                reps["P_value"] < 0.05
+            ).mean(),
+
+        "Downsample_percent_P_ge_observed_pure":
+            100 * (
+                reps["P_value"] >= observed_pure_p
+            ).mean(),
+
+        "Downsample_median_rank_biserial":
+            reps["Rank_biserial"].median(),
+
+        "Downsample_rank_biserial_2.5pct":
+            reps["Rank_biserial"].quantile(0.025),
+
+        "Downsample_rank_biserial_97.5pct":
+            reps["Rank_biserial"].quantile(0.975),
+
+        "Observed_pure_P":
+            observed_pure_p,
+
+        "Observed_pure_rank_biserial":
+            observed_pure_effect,
+    }
+
+    return summary, reps
 
 
 def main():
@@ -105,6 +244,9 @@ def main():
     summary_rows = []
     sensitivity_rows = []
     mixed_cases = []
+
+    power_rows = []
+    power_replicates = []
 
     for prefix, disease_label in datasets:
 
@@ -168,6 +310,43 @@ def main():
             pure_neg
         )
 
+        # -------------------------------------------------
+        # POWER / SAMPLE-SIZE DIAGNOSTIC
+        # -------------------------------------------------
+
+        power_summary, power_reps = (
+            downsample_power_diagnostic(
+                pos_df=pos,
+                neg_df=neg,
+                target_n=len(pure_neg),
+                observed_pure_p=pure["P_value"],
+                observed_pure_effect=(
+                    pure[
+                        "Rank_biserial_discordant_gt_concordant"
+                    ]
+                ),
+                seed=RANDOM_SEED + len(power_rows),
+            )
+        )
+
+        power_summary["Disease"] = disease_label
+
+        power_summary[
+            "Original_rank_biserial"
+        ] = original[
+            "Rank_biserial_discordant_gt_concordant"
+        ]
+
+        power_rows.append(
+            power_summary
+        )
+
+        power_reps["Disease"] = disease_label
+
+        power_replicates.append(
+            power_reps
+        )
+
         sensitivity_rows.append({
             "Disease": disease_label,
 
@@ -206,6 +385,16 @@ def main():
 
             "P_pure_discordant":
                 pure["P_value"],
+
+            "Rank_biserial_all_discordant":
+                original[
+                    "Rank_biserial_discordant_gt_concordant"
+                ],
+
+            "Rank_biserial_pure_discordant":
+                pure[
+                    "Rank_biserial_discordant_gt_concordant"
+                ],
         })
 
     # =====================================================
@@ -265,6 +454,42 @@ def main():
             "MixedDirectionality_AbsZ_Sensitivity.csv"
         ),
         index=False
+    )
+
+    # =====================================================
+    # POWER / SAMPLE-SIZE DIAGNOSTIC
+    # =====================================================
+
+    power = pd.DataFrame(
+        power_rows
+    )
+
+    power.to_csv(
+        os.path.join(
+            out_dir,
+            "MixedDirectionality_PowerDiagnostic.csv"
+        ),
+        index=False
+    )
+
+    power_reps = pd.concat(
+        power_replicates,
+        ignore_index=True
+    )
+
+    power_reps.to_csv(
+        os.path.join(
+            out_dir,
+            "MixedDirectionality_PowerDiagnostic_Replicates.csv"
+        ),
+        index=False
+    )
+
+    print("\nPower / sample-size diagnostic:")
+    print(
+        power.round(4).to_string(
+            index=False
+        )
     )
 
     print("\nMixed-directionality summary:")

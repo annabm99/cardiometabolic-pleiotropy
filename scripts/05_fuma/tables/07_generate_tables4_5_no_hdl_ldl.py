@@ -1318,45 +1318,57 @@ figure2.to_csv(
     index=False
 )
 
-with pd.ExcelWriter(
-    OUT_DIR /
-    "Figure2_Framework_noHDL_LDL.xlsx"
-) as writer:
+try:
+    with pd.ExcelWriter(
+        OUT_DIR /
+        "Figure2_Framework_noHDL_LDL.xlsx"
+    ) as writer:
 
-    table4.to_excel(
-        writer,
-        sheet_name="Table4_PleioLoci_noHDL_LDL",
-        index=False
+        table4.to_excel(
+            writer,
+            sheet_name="Table4_PleioLoci_noHDL_LDL",
+            index=False
+        )
+
+        table5.to_excel(
+            writer,
+            sheet_name="Table5_GeneMapping_noHDL_LDL",
+            index=False
+        )
+
+        figure2.to_excel(
+            writer,
+            sheet_name="HighlightGenes_noHDL_LDL",
+            index=False
+        )
+
+        table4_membership.to_excel(
+            writer,
+            sheet_name="Table4_LocusMembership",
+            index=False
+        )
+
+        table5_gene_evidence.to_excel(
+            writer,
+            sheet_name="Table5_GeneEvidence",
+            index=False
+        )
+
+        table5_gene_summary.to_excel(
+            writer,
+            sheet_name="Table5_GeneSummary",
+            index=False
+        )
+
+    print(
+        "Excel framework saved:",
+        OUT_DIR / "Figure2_Framework_noHDL_LDL.xlsx"
     )
 
-    table5.to_excel(
-        writer,
-        sheet_name="Table5_GeneMapping_noHDL_LDL",
-        index=False
-    )
-
-    figure2.to_excel(
-        writer,
-        sheet_name="HighlightGenes_noHDL_LDL",
-        index=False
-    )
-
-    table4_membership.to_excel(
-        writer,
-        sheet_name="Table4_LocusMembership",
-        index=False
-    )
-
-    table5_gene_evidence.to_excel(
-        writer,
-        sheet_name="Table5_GeneEvidence",
-        index=False
-    )
-
-    table5_gene_summary.to_excel(
-        writer,
-        sheet_name="Table5_GeneSummary",
-        index=False
+except ImportError:
+    print(
+        "WARNING: Excel writer dependency not installed; "
+        "skipping XLSX export."
     )
 
 table4_membership.to_csv(

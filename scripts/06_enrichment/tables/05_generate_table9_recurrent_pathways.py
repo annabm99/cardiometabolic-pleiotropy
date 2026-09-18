@@ -225,15 +225,16 @@ print(f"CSV saved: {CSV_OUT}")
 # EXPORT XLSX
 # ============================================================
 
-with pd.ExcelWriter(XLSX_OUT, engine="openpyxl") as writer:
-
-    final_df.to_excel(
-        writer,
-        sheet_name="Table9",
-        index=False
-    )
-
-print(f"XLSX saved: {XLSX_OUT}")
+try:
+    with pd.ExcelWriter(XLSX_OUT, engine="openpyxl") as writer:
+        final_df.to_excel(
+            writer,
+            sheet_name="Table9",
+            index=False
+        )
+    print(f"XLSX saved: {XLSX_OUT}")
+except ImportError:
+    print("WARNING: openpyxl not installed; skipping XLSX export.")
 
 # ============================================================
 # EXPORT LATEX

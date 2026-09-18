@@ -22,8 +22,8 @@ TABLE4 = os.environ.get(
 )
 
 HIGHLIGHT_GENES = os.environ.get(
-    "CVP_FIGURE2_HIGHLIGHT_GENES",
-    str(PROJECT_DIR / "FinalTables/Figure2_HighlightGenes_noHDL_LDL.csv")
+    "CVP_FIGURE3_HIGHLIGHT_GENES",
+    str(PROJECT_DIR / "FinalTables/Figure3_HighlightGenes_noHDL_LDL.csv")
 )
 
 OUTDIR = Path(
@@ -418,13 +418,33 @@ for track_idx, track in enumerate(tracks):
             + span.get("label_shift", 0)
         )
 
+        display_label = span["gene"]
+
+        if (
+            display_label
+            == "WBP1L/AS3MT/CNNM2/NT5C2"
+        ):
+            display_label = (
+                "WBP1L/AS3MT\n"
+                "CNNM2/NT5C2"
+            )
+
         ax.text(
+
             xmid,
+
             y - 0.15,
-            span["gene"],
+
+            display_label,
+
             ha="center",
+
             va="top",
-            fontsize=12
+
+            fontsize=12,
+
+            linespacing=1.0
+
         )
 
 ##############################################################################
@@ -522,17 +542,17 @@ ax.spines["bottom"].set_visible(False)
 
 pdf_file = (
     OUTDIR /
-    "Figure2_LocusMatrix_WidthWeighted.pdf"
+    "Figure3_LocusMatrix_WidthWeighted.pdf"
 )
 
 svg_file = (
     OUTDIR /
-    "Figure2_LocusMatrix_WidthWeighted.svg"
+    "Figure3_LocusMatrix_WidthWeighted.svg"
 )
 
 png_file = (
     OUTDIR /
-    "Figure2_LocusMatrix_WidthWeighted.png"
+    "Figure3_LocusMatrix_WidthWeighted.png"
 )
 
 plt.savefig(
@@ -554,7 +574,7 @@ plt.savefig(
 plt.close()
 
 ##############################################################################
-# FIGURE 2 LEGEND
+# FIGURE 3 LEGEND
 ##############################################################################
 
 fig_leg, ax_leg = plt.subplots(
@@ -688,17 +708,17 @@ ax_leg.set_ylim(
 
 legend_pdf = (
     OUTDIR /
-    "Figure2_Legend.pdf"
+    "Figure3_Legend.pdf"
 )
 
 legend_svg = (
     OUTDIR /
-    "Figure2_Legend.svg"
+    "Figure3_Legend.svg"
 )
 
 legend_png = (
     OUTDIR /
-    "Figure2_Legend.png"
+    "Figure3_Legend.png"
 )
 
 fig_leg.savefig(

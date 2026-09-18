@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 
 """
-Figure 3 – Pleiotropic Architecture Matrix
+Figure 2 – Pleiotropic Architecture Matrix
 
 Inputs
 ------
-Fig3_DiseaseBurden.csv
-Fig3_MatrixCounts.csv
+Fig2_DiseaseBurden.csv
+Fig2_MatrixCounts.csv
 
 Outputs
 -------
-Figure3_PleioMatrix.svg
-Figure3_PleioMatrix.png
+Figure2_PleioMatrix.svg
+Figure2_PleioMatrix.png
 
-Figure3_legend.svg
-Figure3_legend.png
+Figure2_legend.svg
+Figure2_legend.png
 """
 
 import os
@@ -51,12 +51,12 @@ os.makedirs(
 
 BURDEN_PATH = os.path.join(
     INPUT_DIR,
-    "Fig3_DiseaseBurden.csv"
+    "Fig2_DiseaseBurden.csv"
 )
 
 MATRIX_PATH = os.path.join(
     INPUT_DIR,
-    "Fig3_MatrixCounts.csv"
+    "Fig2_MatrixCounts.csv"
 )
 
 # =============================================================================
@@ -546,12 +546,12 @@ for disease, matrix_ax in zip(DISEASES, bottom_axes):
 
 svg_file = os.path.join(
     OUTPUT_DIR,
-    "Figure3_PleioMatrix.svg"
+    "Figure2_PleioMatrix.svg"
 )
 
 png_file = os.path.join(
     OUTPUT_DIR,
-    "Figure3_PleioMatrix.png"
+    "Figure2_PleioMatrix.png"
 )
 
 fig.savefig(

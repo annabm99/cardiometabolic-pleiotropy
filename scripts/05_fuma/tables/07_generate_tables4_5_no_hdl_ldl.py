@@ -1054,126 +1054,184 @@ table5_gene_summary = (
 
 ##############################################################################
 # STEP 5
-# FIGURE 2 HIGHLIGHT GENES
+# FIGURE 3 HIGHLIGHT REGIONS
 ##############################################################################
 
-remove_patterns = [
-    r"^LOC",
-    r"^LINC",
-    r"^MIR",
-    r"^SNORA",
-    r"^SNORD",
-    r"^RNU",
-    r"^Y_RNA",
-    r"^sno",
-    r"^RP11-"
-]
+from itertools import combinations
 
-keep = []
+FOUR_DISEASES = {"CAD", "HT", "STR", "T2D"}
 
-for _, row in table5.iterrows():
-
-    gene = row["symbol"]
-
-    discard = False
-
-    for pat in remove_patterns:
-        if re.match(
-            pat,
-            gene,
-            flags=re.IGNORECASE
-        ):
-            discard = True
-
-    if gene.endswith("-AS1"):
-        discard = True
-
-    if gene.endswith("-AS2"):
-        discard = True
-
-    if "PSEUDO" in gene.upper():
-        discard = True
-
-    if "C10orf32" in gene:
-        discard = True
-
-    if not discard:
-        keep.append(row)
-
-highlight = pd.DataFrame(keep)
-
-##############################################################################
-# COLLAPSE CHR10 CLUSTER
-##############################################################################
-
-cluster = {
-    "AS3MT",
-    "CNNM2",
-    "NT5C2",
-    "WBP1L",
-    "MARCKSL1P1"
+# Current-annotation override for Figure 3 display candidates.
+# ENSG00000270316 is currently BORCS7-ASMT
+# (formerly C10orf32-ASMT), an ncRNA read-through / NMD candidate.
+# Preserve it in the full FUMA evidence, but do not treat it as a
+# protein-coding gene for compact Figure 3 labels.
+FIGURE3_NONCODING_OVERRIDES = {
+    "ENSG00000270316"
 }
 
-cluster_rows = highlight[
-    highlight["symbol"].isin(cluster)
-]
 
-cluster_ids = set()
+def split_pipe(value):
+    if pd.isna(value):
+        return set()
 
-for x in cluster_rows["MergedLocusIDs"]:
-    cluster_ids |= set(
-        x.split("|")
+    return {
+        x.strip()
+        for x in str(value).split("|")
+        if x.strip()
+    }
+
+
+def ml_sort_key(value):
+    try:
+        return int(str(value).replace("ML_", ""))
+    except ValueError:
+        return str(value)
+
+
+##############################################################################
+# A. GENE-DEFINED FOUR-DISEASE REGIONS
+#
+# Retain protein-coding genes whose own mapped evidence spans all four
+# diseases. Genes belonging to the same connected set of merged loci are
+# displayed together as one regional label.
+##############################################################################
+
+gene_defined = table5[
+    table5["Gene_Type"]
+    .astype(str)
+    .str.lower()
+    .eq("protein_coding")
+].copy()
+
+gene_defined = gene_defined[
+    ~gene_defined["Ensembl_ID"]
+    .astype(str)
+    .isin(FIGURE3_NONCODING_OVERRIDES)
+].copy()
+
+gene_defined["_DiseaseSet"] = (
+    gene_defined["Diseases"]
+    .map(split_pipe)
+)
+
+gene_defined = gene_defined[
+    gene_defined["_DiseaseSet"]
+    .map(lambda x: x == FOUR_DISEASES)
+].copy()
+
+gene_defined["_LocusSet"] = (
+    gene_defined["MergedLocusIDs"]
+    .map(split_pipe)
+)
+
+##############################################################################
+# Group four-disease genes into connected genomic regions according to
+# overlap in their merged-locus IDs.
+##############################################################################
+
+remaining = set(gene_defined.index)
+components = []
+
+while remaining:
+
+    seed = remaining.pop()
+    component = {seed}
+    component_loci = set(
+        gene_defined.at[seed, "_LocusSet"]
     )
 
-highlight = highlight[
-    ~highlight["symbol"].isin(cluster)
-]
+    changed = True
+
+    while changed:
+
+        changed = False
+
+        for idx in list(remaining):
+
+            loci = gene_defined.at[
+                idx,
+                "_LocusSet"
+            ]
+
+            if component_loci & loci:
+
+                component.add(idx)
+                component_loci |= loci
+                remaining.remove(idx)
+
+                changed = True
+
+    components.append(
+        (component, component_loci)
+    )
 
 highlight_rows = []
 
-for _, row in highlight.iterrows():
+for component, locus_ids in components:
+
+    g = gene_defined.loc[
+        list(component)
+    ].copy()
+
+    # Deterministic display order: genomic position, then symbol.
+    g = g.sort_values(
+        [
+            "Chromosome",
+            "Gene_Start",
+            "symbol"
+        ]
+    )
+
+    label_genes = (
+        g["symbol"]
+        .astype(str)
+        .tolist()
+    )
 
     highlight_rows.append({
+
         "Label":
-            row["symbol"],
-
-        "MergedLocusIDs":
-            row["MergedLocusIDs"],
-
-        "AnnotationType":
-            "Gene"
-    })
-
-if len(cluster_rows):
-
-    highlight_rows.append({
-        "Label":
-            "AS3MT/CNNM2/NT5C2/WBP1L/MARCKSL1P1",
+            "/".join(label_genes),
 
         "MergedLocusIDs":
             "|".join(
-                sorted(cluster_ids)
+                sorted(
+                    locus_ids,
+                    key=ml_sort_key
+                )
             ),
 
         "AnnotationType":
-            "Gene"
+            "Gene",
+
+        "LabelBasis":
+            "Protein-coding gene(s) with four-disease recurrence"
+
     })
 
+
 ##############################################################################
-# IDENTIFY ALREADY-ANNOTATED LOCI
+# B. LOCUS-DEFINED FOUR-DISEASE REGIONS
+#
+# Some strict four-disease merged loci contain no individual protein-coding
+# gene whose mapped evidence spans all four diseases. For these loci, choose
+# the smallest set of protein-coding mapped genes whose combined disease
+# evidence covers CAD, HT, STR and T2D.
+#
+# Among equally small covering sets, prefer the set with the largest summed
+# number of unique phenotype-pair observations. Alphabetical ordering is used
+# only as the final deterministic tie-breaker.
 ##############################################################################
 
 annotated_loci = set()
 
 for row in highlight_rows:
 
-    annotated_loci |= set(
-        row["MergedLocusIDs"].split("|")
+    annotated_loci |= split_pipe(
+        row["MergedLocusIDs"]
     )
 
-##############################################################################
-# MAJOR MULTI-DISEASE LOCI
-##############################################################################
 
 major_loci = table4[
     (table4["Number_of_Diseases"] == 4) &
@@ -1181,103 +1239,219 @@ major_loci = table4[
 ].copy()
 
 major_loci = major_loci[
-    ~major_loci["MergedLocusID"].isin(
-        annotated_loci
-    )
+    ~major_loci["MergedLocusID"]
+    .isin(annotated_loci)
 ]
 
+
 print(
-    f"\nAdditional locus annotations: "
+    f"\nAdditional locus-defined annotations: "
     f"{len(major_loci)}"
 )
 
-##############################################################################
-# ASSIGN LOCUS LABELS
-##############################################################################
 
 for _, locus in major_loci.iterrows():
 
     ml = locus["MergedLocusID"]
 
     genes = gene_evidence[
-        gene_evidence["MergedLocusID"] == ml
-    ]
+        gene_evidence["MergedLocusID"]
+        .eq(ml)
+    ].copy()
 
-    if len(genes) == 0:
-        continue
+    genes = genes[
+        genes["type"]
+        .astype(str)
+        .str.lower()
+        .eq("protein_coding")
+    ].copy()
 
-    counts = (
-        genes["symbol"]
-        .value_counts()
+    genes = genes[
+        ~genes["ensg"]
+        .astype(str)
+        .isin(FIGURE3_NONCODING_OVERRIDES)
+    ].copy()
+
+    genes = genes[
+        genes["symbol"].notna()
+    ].copy()
+
+    if genes.empty:
+        raise ValueError(
+            f"{ml}: no protein-coding mapped genes available "
+            "for locus-level Figure 3 annotation"
+        )
+
+    gene_stats = {}
+
+    for symbol, g in genes.groupby("symbol"):
+
+        disease_set = set()
+
+        for value in g["Disease"]:
+
+            disease_set |= split_pipe(
+                value
+            )
+
+        gene_stats[symbol] = {
+
+            "Diseases":
+                disease_set,
+
+            "N_Phenotype_Pairs":
+                g["Phenotype_Pair"]
+                .nunique()
+
+        }
+
+    symbols = sorted(
+        gene_stats
     )
 
-    ##############################################################################
-    # REMOVE NON-INFORMATIVE GENE TYPES
-    ##############################################################################
+    best_combo = None
+    best_score = None
 
-    counts = counts[
-        ~counts.index.str.contains(
-            r"^(LOC|LINC|MIR|RP11-|SNORA|SNORD|RNU|Y_RNA|sno)",
-            case=False,
-            regex=True
+    for n_genes in range(
+        1,
+        len(symbols) + 1
+    ):
+
+        candidate_combos = []
+
+        for combo in combinations(
+            symbols,
+            n_genes
+        ):
+
+            covered = set()
+
+            for symbol in combo:
+
+                covered |= (
+                    gene_stats[symbol]
+                    ["Diseases"]
+                )
+
+            if FOUR_DISEASES <= covered:
+
+                score = sum(
+                    gene_stats[symbol]
+                    ["N_Phenotype_Pairs"]
+
+                    for symbol in combo
+                )
+
+                candidate_combos.append(
+                    (
+                        score,
+                        combo
+                    )
+                )
+
+        if candidate_combos:
+
+            # Highest evidence score first;
+            # alphabetical tuple as final tie-breaker.
+            candidate_combos.sort(
+                key=lambda x: (
+                    -x[0],
+                    x[1]
+                )
+            )
+
+            best_score, best_combo = (
+                candidate_combos[0]
+            )
+
+            break
+
+    if best_combo is None:
+
+        raise ValueError(
+            f"{ml}: protein-coding mapped genes "
+            "do not jointly cover all four diseases"
         )
-    ]
-
-    counts = counts[
-        ~counts.index.str.endswith(
-            ("-AS1", "-AS2")
-        )
-    ]
-
-    ##############################################################################
-    # REMOVE PSEUDOGENES
-    ##############################################################################
-
-    counts = counts[
-        ~counts.index.str.contains(
-            r"(P\d+$|PSEUDO)",
-            case=False,
-            regex=True
-        )
-    ]
-
-    if len(counts) == 0:
-        continue
-
-    ##############################################################################
-    # PREFER PROTEIN-CODING GENES
-    ##############################################################################
-
-    preferred = [
-        g for g in counts.index
-        if not re.search(
-            r"(P\d+$|^AP\d+\.)",
-            g,
-            flags=re.IGNORECASE
-        )
-    ]
-
-    if len(preferred) >= 2:
-        top_genes = preferred[:2]
-    else:
-        top_genes = counts.index.tolist()[:2]
-
-    label = "/".join(top_genes)
 
     highlight_rows.append({
 
         "Label":
-            label,
+            "/".join(best_combo),
 
         "MergedLocusIDs":
             ml,
 
         "AnnotationType":
-            "Locus"
+            "Locus",
+
+        "LabelBasis":
+            "Minimal protein-coding gene set covering four-disease locus"
+
     })
 
-figure2 = pd.DataFrame(
+
+##############################################################################
+# FINAL FIGURE 3 ANNOTATION TABLE
+##############################################################################
+
+figure3 = pd.DataFrame(
     highlight_rows
+)
+
+figure3 = figure3.sort_values(
+    [
+        "AnnotationType",
+        "MergedLocusIDs",
+        "Label"
+    ]
+).reset_index(
+    drop=True
+)
+
+
+##############################################################################
+# FIGURE 3 QC
+##############################################################################
+
+print("\nFigure 3 highlight regions:")
+print(
+    figure3.to_string(
+        index=False
+    )
+)
+
+assert len(figure3) == 7, (
+    f"Expected 7 primary convergence regions, "
+    f"found {len(figure3)}"
+)
+
+assert (
+    figure3["Label"]
+    .str.contains(
+        r"Y_RNA|snoU13",
+        case=False,
+        regex=True
+    )
+    .sum()
+    == 0
+)
+
+expected_locus_defined = {
+    "ML_197",
+    "ML_794"
+}
+
+observed_locus_defined = set(
+    figure3.loc[
+        figure3["AnnotationType"]
+        .eq("Locus"),
+        "MergedLocusIDs"
+    ]
+)
+
+assert observed_locus_defined == expected_locus_defined, (
+    "Unexpected locus-defined Figure 3 regions: "
+    f"{sorted(observed_locus_defined)}"
 )
 
 ##############################################################################
@@ -1312,16 +1486,16 @@ table5.to_csv(
     index=False
 )
 
-figure2.to_csv(
+figure3.to_csv(
     OUT_DIR /
-    "Figure2_HighlightGenes_noHDL_LDL.csv",
+    "Figure3_HighlightGenes_noHDL_LDL.csv",
     index=False
 )
 
 try:
     with pd.ExcelWriter(
         OUT_DIR /
-        "Figure2_Framework_noHDL_LDL.xlsx"
+        "Figure3_Framework_noHDL_LDL.xlsx"
     ) as writer:
 
         table4.to_excel(
@@ -1336,7 +1510,7 @@ try:
             index=False
         )
 
-        figure2.to_excel(
+        figure3.to_excel(
             writer,
             sheet_name="HighlightGenes_noHDL_LDL",
             index=False
@@ -1362,7 +1536,7 @@ try:
 
     print(
         "Excel framework saved:",
-        OUT_DIR / "Figure2_Framework_noHDL_LDL.xlsx"
+        OUT_DIR / "Figure3_Framework_noHDL_LDL.xlsx"
     )
 
 except ImportError:
@@ -1405,6 +1579,6 @@ for gene in sorted(table5["symbol"]):
 print()
 print(f"Table4 rows: {len(table4):,}")
 print(f"Table5 rows: {len(table5):,}")
-print(f"Highlight genes: {len(figure2):,}")
+print(f"Highlight regions: {len(figure3):,}")
 
 print("\nDONE")

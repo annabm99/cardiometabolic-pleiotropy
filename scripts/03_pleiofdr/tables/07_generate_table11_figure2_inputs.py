@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 
 """
-Generate Figure 3 input datasets from Table4_PleioLoci.csv
+Generate Figure 2 input datasets from Table4_PleioLoci_all_traits.csv
 
 Outputs:
 --------
 1. Table11_PleioCounts.csv
     One row per locus × disease × trait
 
-2. Fig3_DiseaseBurden.csv
+2. Fig2_DiseaseBurden.csv
     Unique pleiotropic loci per disease and direction
 
-3. Fig3_MatrixCounts.csv
+3. Fig2_MatrixCounts.csv
     Disease × Trait matrix counts for plotting
 
 Author: Anna Basquet project
@@ -31,11 +31,11 @@ PROJECT_DIR = os.environ.get(
 )
 
 TABLE4_PATH = os.environ.get(
-    "CVP_TABLE4_FOR_FIG3",
-    f"{PROJECT_DIR}/FinalTables/Table4_PleioLoci.csv"
+    "CVP_TABLE4_FOR_FIG2",
+    f"{PROJECT_DIR}/FinalTables/Table4_PleioLoci_all_traits.csv"
 )
-# Figure 3 summarizes genome-wide PleioFDR results, where HDL and LDL were
-# retained. Set CVP_TABLE4_FOR_FIG3 to a no-HDL/LDL table only if intentionally
+# Figure 2 summarizes genome-wide PleioFDR results, where HDL and LDL were
+# retained. Set CVP_TABLE4_FOR_FIG2 to a no-HDL/LDL table only if intentionally
 # reproducing the downstream convergence branch instead.
 
 OUTPUT_DIR = os.environ.get(
@@ -56,12 +56,12 @@ TABLE11_OUT = os.path.join(
 
 BURDEN_OUT = os.path.join(
     OUTPUT_DIR,
-    "Fig3_DiseaseBurden.csv"
+    "Fig2_DiseaseBurden.csv"
 )
 
 MATRIX_OUT = os.path.join(
     OUTPUT_DIR,
-    "Fig3_MatrixCounts.csv"
+    "Fig2_MatrixCounts.csv"
 )
 
 # ============================================================
@@ -121,9 +121,10 @@ print(f"Rows loaded: {len(t4):,}")
 print("\nParsing Phenotype_Pairs ...")
 
 records = []
+ignored_pairs = []
 
 pair_pattern = re.compile(
-    r"^(CAD|HT|STR|T2D)_d-(BMI|WC|SBP|DBP|FG|HDL|LDL|TGL)_t$"
+    r"^(CAD|HT|STR|T2D)-(BMI|WC|SBP|DBP|FG|HDL|LDL|TGL)$"
 )
 
 for _, row in t4.iterrows():
@@ -145,8 +146,6 @@ for _, row in t4.iterrows():
 
         match = pair_pattern.match(pair)
 
-        ignored_pairs = []
-
         if match is None:
             ignored_pairs.append(pair)
             continue
@@ -162,6 +161,13 @@ for _, row in t4.iterrows():
                 "Pleiotropy_Type": direction
             }
         )
+
+if ignored_pairs:
+
+    raise ValueError(
+        "Unexpected phenotype-pair labels encountered: "
+        + ", ".join(sorted(set(ignored_pairs)))
+    )
 
 # ============================================================
 # TABLE 11
@@ -182,7 +188,7 @@ print(
 )
 
 # ============================================================
-# FIGURE 3A
+# FIGURE 2A
 # DISEASE BURDEN
 # ============================================================
 
@@ -229,12 +235,12 @@ disease_burden.to_csv(
 )
 
 print(
-    f"Saved Fig3_DiseaseBurden.csv "
+    f"Saved Fig2_DiseaseBurden.csv "
     f"({len(disease_burden)} rows)"
 )
 
 # ============================================================
-# FIGURE 3B
+# FIGURE 2B
 # MATRIX COUNTS
 # ============================================================
 
@@ -278,7 +284,7 @@ matrix_counts.to_csv(
 )
 
 print(
-    f"Saved Fig3_MatrixCounts.csv "
+    f"Saved Fig2_MatrixCounts.csv "
     f"({len(matrix_counts)} rows)"
 )
 

@@ -13,6 +13,17 @@ PROJECT_DIR = Path(
 FINAL_TABLES_DIR = Path(
     os.environ.get("CVP_FINAL_TABLES_DIR", str(PROJECT_DIR / "FinalTables"))
 )
+
+THEME_TABLE = Path(
+    os.environ.get(
+        "CVP_THEME_TABLE",
+        str(
+            FINAL_TABLES_DIR
+            / "Table10_ThemePermutation.csv"
+        )
+    )
+)
+
 FIGURES_DIR = Path(
     os.environ.get("CVP_FIGURES_DIR", str(PROJECT_DIR / "Figures"))
 )
@@ -62,8 +73,6 @@ df = df[
     & (df["Statistic"] == "Count (% of unique lead SNPs)")
     & (df["Annotation"].isin(annotation_rows))
 ].copy()
-
-print(df.dtypes)
 
 for col in ["Concordant", "Discordant"]:
     df[col] = (
@@ -263,20 +272,14 @@ plt.savefig(
 # =============================================================================
 
 summary = pd.read_csv(
-    FINAL_TABLES_DIR / "Table10_ThemePermutation.csv"
+    THEME_TABLE
 )
 
 # =============================================================================
-# FILTER
+# RETAIN ALL 15 PREDEFINED THEMES
 # =============================================================================
 
-plot_df = (
-    summary[
-        (summary["Positive_Percent"] >= 3) |
-        (summary["Negative_Percent"] >= 3)
-    ]
-    .copy()
-)
+plot_df = summary.copy()
 
 plot_df = (
     plot_df[
@@ -294,6 +297,13 @@ plot_df["Theme"] = (
     plot_df["Theme"]
     .str.replace(r"\\n", "\n", regex=True)
 )
+
+if len(plot_df) != 15:
+
+    raise RuntimeError(
+        "QC FAIL: expected 15 GWAS Catalog themes, "
+        f"found {len(plot_df)}"
+    )
 
 # =============================================================================
 # ORDER BY TOTAL IMPORTANCE
@@ -356,8 +366,10 @@ n_rows = len(heatmap_df)
 red_cmap = cm.Reds
 blue_cmap = cm.Blues
 
-max_pos = heatmap_df["Positive_Percent"].max()
-max_neg = heatmap_df["Negative_Percent"].max()
+max_pct = max(
+    heatmap_df["Positive_Percent"].max(),
+    heatmap_df["Negative_Percent"].max(),
+)
 
 for i, (theme, row) in enumerate(heatmap_df.iterrows()):
 
@@ -374,7 +386,7 @@ for i, (theme, row) in enumerate(heatmap_df.iterrows()):
             1,
             1,
             facecolor=red_cmap(
-                0.15 + 0.85 * pos/max_pos
+                0.15 + 0.85 * pos / max_pct
             ),
             edgecolor="white",
             linewidth=2
@@ -388,7 +400,7 @@ for i, (theme, row) in enumerate(heatmap_df.iterrows()):
             1,
             1,
             facecolor=blue_cmap(
-                0.15 + 0.85 * neg/max_neg
+                0.15 + 0.85 * neg/max_pct
             ),
             edgecolor="white",
             linewidth=2
@@ -426,7 +438,7 @@ for i, (theme, row) in enumerate(heatmap_df.iterrows()):
 
     pos_color = (
         "white"
-        if pos > 0.65 * max_pos
+        if pos > 0.65 * max_pct
         else TEXT
     )
 
@@ -443,7 +455,7 @@ for i, (theme, row) in enumerate(heatmap_df.iterrows()):
 
     neg_color = (
         "white"
-        if neg > 0.65 * max_neg
+        if neg > 0.65 * max_pct
         else TEXT
     )
 
@@ -484,8 +496,8 @@ ax.set_xticks([0.5, 1.5, 2.5])
 
 ax.set_xticklabels(
     [
-        "Concordant",
-        "Discordant",
+        "Concordant\n(%)",
+        "Discordant\n(%)",
         "Δ percentage\npoints"
     ],
     fontsize=16,
@@ -518,7 +530,7 @@ for spine in ax.spines.values():
 plt.tight_layout()
 
 ax.set_title(
-    "B. Biological Theme Profiles of\nConcordant and Discordant Pleiotropy",
+    "B. Recurrent GWAS Catalog Trait-Enrichment Profiles",
     fontsize=22,
     fontweight="bold",
     color=TEXT,

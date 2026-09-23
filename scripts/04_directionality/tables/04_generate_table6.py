@@ -1,149 +1,207 @@
+#!/usr/bin/env python3
+
 import os
-import sys
+from pathlib import Path
+
 import pandas as pd
 
-# =========================================================
-# MAIN
-# =========================================================
 
-PROJECT_DIR = os.environ.get(
-    "CVP_PROJECT_DIR",
-    "/path/to/cardiovascular_pleiotropies"
+PROJECT_DIR = Path(
+    os.environ.get(
+        "CVP_PROJECT_DIR",
+        "/path/to/cardiovascular_pleiotropies",
+    )
 )
 
-input_file = os.environ.get(
-    "CVP_DIRECTIONALITY_STATS",
-    f"{PROJECT_DIR}/3-Directionality/3-StatisticalComparison/Directionality_StatisticalComparison_noChol.csv"
-)
-out_dir = os.environ.get(
-    "CVP_FINAL_TABLES_DIR",
-    f"{PROJECT_DIR}/FinalTables"
+INPUT_FILE = Path(
+    os.environ.get(
+        "CVP_ASSOCIATION_STRENGTH_STATS",
+        str(
+            PROJECT_DIR
+            / "3-Directionality"
+            / "3-AssociationStrength"
+            / "AssociationStrength_LDPruned_Summary.csv"
+        ),
+    )
 )
 
-os.makedirs(out_dir, exist_ok=True)
+OUT_DIR = Path(
+    os.environ.get(
+        "CVP_FINAL_TABLES_DIR",
+        str(PROJECT_DIR / "FinalTables"),
+    )
+)
+
+OUT_DIR.mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
 
 # =========================================================
 # LOAD
 # =========================================================
 
-df = pd.read_csv(input_file)
+df = pd.read_csv(
+    INPUT_FILE
+)
+
+expected_analyses = {
+    "Primary_LD_pruned",
+    "Sensitivity_LD_pruned_no_mixed",
+}
+
+observed_analyses = set(
+    df["Analysis"]
+)
+
+missing = (
+    expected_analyses
+    - observed_analyses
+)
+
+if missing:
+    raise ValueError(
+        f"Missing expected analyses: {sorted(missing)}"
+    )
+
 
 # =========================================================
-# SIGNIFICANCE COLUMN
+# LABEL ANALYSES
 # =========================================================
 
-df["Significant"] = df["P_FDR"] < 0.05
+analysis_labels = {
+    "Primary_LD_pruned":
+        "Primary: LD-pruned",
+    "Sensitivity_LD_pruned_no_mixed":
+        "Sensitivity: LD-pruned, mixed-context excluded",
+}
 
-df["Significant"] = df["Significant"].map({
+df["Analysis"] = (
+    df["Analysis"]
+    .map(analysis_labels)
+)
+
+df["Significant_after_FDR"] = (
+    df["P_FDR"] < 0.05
+).map({
     True: "Yes",
-    False: "No"
+    False: "No",
 })
 
+
 # =========================================================
-# SELECT TABLE 6 COLUMNS
+# SELECT + RENAME
 # =========================================================
 
 table6 = df[[
-
+    "Analysis",
     "Disease",
-
-    "N_positive_pleiotropic_SNPs",
-    "N_negative_pleiotropic_SNPs",
-
-    "Positive_median_abs_zscore",
-    "Negative_median_abs_zscore",
-
+    "N_concordant",
+    "N_discordant",
+    "Concordant_median_abs_z",
+    "Discordant_median_abs_z",
+    "Delta_median_abs_z_discordant_minus_concordant",
     "Mann_Whitney_U",
-
     "P_value",
     "P_FDR",
     "P_Bonferroni",
-
-    "Significant"
-
+    "Significant_after_FDR",
 ]].copy()
 
-# =========================================================
-# OPTIONAL RENAMING
-# =========================================================
-
 table6.columns = [
-
+    "Analysis",
     "Disease",
-
-    "N positive pleiotropic SNPs",
-    "N negative pleiotropic SNPs",
-
-    "Positive median |z|",
-    "Negative median |z|",
-
+    "N concordant signals",
+    "N discordant signals",
+    "Concordant median |Z|",
+    "Discordant median |Z|",
+    "Difference in median |Z| (discordant - concordant)",
     "Mann-Whitney U",
-
     "P-value",
     "FDR-adjusted P-value",
     "Bonferroni-adjusted P-value",
-
-    "Significant"
+    "Significant after FDR",
 ]
+
+
+# =========================================================
+# ORDER
+# =========================================================
+
+analysis_order = [
+    "Primary: LD-pruned",
+    "Sensitivity: LD-pruned, mixed-context excluded",
+]
+
+disease_order = [
+    "Coronary Artery Disease",
+    "Hypertension",
+    "Stroke",
+    "Type 2 Diabetes",
+]
+
+table6["Analysis"] = pd.Categorical(
+    table6["Analysis"],
+    categories=analysis_order,
+    ordered=True,
+)
+
+table6["Disease"] = pd.Categorical(
+    table6["Disease"],
+    categories=disease_order,
+    ordered=True,
+)
+
+table6 = (
+    table6
+    .sort_values(
+        ["Analysis", "Disease"]
+    )
+    .reset_index(drop=True)
+)
+
 
 # =========================================================
 # EXPORT
 # =========================================================
 
-out_prefix = os.path.join(
-    out_dir,
-    "Table6_EffectSizeDirectionality_noChol"
+out_prefix = (
+    OUT_DIR
+    / "Table6_AssociationStrengthDirectionality_noChol"
 )
 
-# ---------------------------------------------------------
-# CSV
-# ---------------------------------------------------------
+csv_path = Path(
+    f"{out_prefix}.csv"
+)
 
-csv_path = f"{out_prefix}.csv"
+tex_path = Path(
+    f"{out_prefix}.tex"
+)
 
 table6.to_csv(
     csv_path,
-    index=False
+    index=False,
 )
-
-# ---------------------------------------------------------
-# Excel
-# ---------------------------------------------------------
-
-xlsx_path = f"{out_prefix}.xlsx"
-
-with pd.ExcelWriter(
-    xlsx_path,
-    engine='openpyxl'
-) as writer:
-
-    table6.to_excel(
-        writer,
-        index=False,
-        sheet_name='Table6'
-    )
-
-# ---------------------------------------------------------
-# LaTeX
-# ---------------------------------------------------------
-
-tex_path = f"{out_prefix}.tex"
 
 latex = table6.to_latex(
     index=False,
     escape=False,
-    float_format="%.3g"
+    float_format="%.3g",
 )
 
-with open(tex_path, 'w') as f:
-    f.write(latex)
-
-# =========================================================
-# DONE
-# =========================================================
+tex_path.write_text(
+    latex
+)
 
 print(f"Saved: {csv_path}")
-print(f"Saved: {xlsx_path}")
 print(f"Saved: {tex_path}")
+
+print("\n=== TABLE 6 ===")
+print(
+    table6.to_string(
+        index=False
+    )
+)
 
 print("\nDONE")

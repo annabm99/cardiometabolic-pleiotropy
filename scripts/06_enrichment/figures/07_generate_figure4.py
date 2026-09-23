@@ -27,12 +27,18 @@ THEME_TABLE = Path(
 FIGURES_DIR = Path(
     os.environ.get("CVP_FIGURES_DIR", str(PROJECT_DIR / "Figures"))
 )
-DIRECTIONALITY_AGG_DIR = Path(
+
+ASSOCIATION_STRENGTH_DIR = Path(
     os.environ.get(
-        "CVP_DIRECTIONALITY_AGG_DIR",
-        str(PROJECT_DIR / "3-Directionality/2-Aggregate")
+        "CVP_ASSOCIATION_STRENGTH_DIR",
+        str(
+            PROJECT_DIR
+            / "3-Directionality"
+            / "3-AssociationStrength"
+        )
     )
 )
+
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
 # =============================================================================
@@ -556,7 +562,7 @@ plt.show()
 
 # =============================================================================
 # PANEL C
-# Clinical Impact Butterfly Violin Plot
+# Disease-specific association strength by pleiotropic direction
 # =============================================================================
 
 TEXT = "#333333"
@@ -565,26 +571,22 @@ TEXT = "#333333"
 # LOAD DATA
 # =============================================================================
 
-pos = pd.read_csv(
-    DIRECTIONALITY_AGG_DIR / "All_positive_snps_noChol.csv.gz",
+raw = pd.read_csv(
+    ASSOCIATION_STRENGTH_DIR
+    / "AssociationStrength_LDPruned_Primary_SNPs.csv.gz",
     sep="\t",
     compression="gzip"
-)
-
-neg = pd.read_csv(
-    DIRECTIONALITY_AGG_DIR / "All_negative_snps_noChol.csv.gz",
-    sep="\t",
-    compression="gzip"
-)
-
-raw = pd.concat(
-    [pos, neg],
-    ignore_index=True
 )
 
 stats = pd.read_csv(
-    FINAL_TABLES_DIR / "Table6_EffectSizeDirectionality_noChol.csv"
+    FINAL_TABLES_DIR
+    / "Table6_AssociationStrengthDirectionality_noChol.csv"
 )
+
+# Figure 4C shows the primary LD-pruned analysis.
+stats = stats[
+    stats["Analysis"] == "Primary: LD-pruned"
+].copy()
 
 # =============================================================================
 # HARMONIZE DISEASE NAMES
@@ -704,11 +706,11 @@ for i, disease in enumerate(disease_order):
         stats["Disease"] == disease
     ].iloc[0]
 
-    n_neg = int(row["N negative pleiotropic SNPs"])
-    n_pos = int(row["N positive pleiotropic SNPs"])
+    n_neg = int(row["N discordant signals"])
+    n_pos = int(row["N concordant signals"])
 
-    neg_med = -row["Negative median |z|"]
-    pos_med = row["Positive median |z|"]
+    neg_med = -row["Discordant median |Z|"]
+    pos_med = row["Concordant median |Z|"]
 
     delta = abs(neg_med) - pos_med
 
@@ -856,7 +858,7 @@ ax.set_yticklabels(
 )
 
 ax.set_xlabel(
-    "Absolute disease-specific effect size (|Z|)",
+    "Disease-specific association strength (|Z|)",
     fontsize=20,
     fontweight="bold"
 )
@@ -864,7 +866,7 @@ ax.set_xlabel(
 ax.set_ylabel("")
 
 ax.set_title(
-    "C. Clinical Impact of Pleiotropic Variants",
+    "C. Disease-specific Association Strength of Pleiotropic Signals",
     fontsize=28,
     fontweight="bold",
     pad=5
@@ -896,13 +898,13 @@ plt.tight_layout()
 # =============================================================================
 
 plt.savefig(
-    FIGURES_DIR / "Figure4C_ClinicalImpact.png",
+    FIGURES_DIR / "Figure4C_AssociationStrength.png",
     dpi=300,
     bbox_inches="tight"
 )
 
 plt.savefig(
-    FIGURES_DIR / "Figure4C_ClinicalImpact.svg",
+    FIGURES_DIR / "Figure4C_AssociationStrength.svg",
     bbox_inches="tight"
 )
 

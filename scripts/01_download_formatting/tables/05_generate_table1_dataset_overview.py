@@ -148,9 +148,9 @@ metadata = {
 
     "FG_t": {
         "category": "Quantitative trait",
-        "abbr": "FG",
+        "abbr": "RG",
         "domain": "Metabolic marker",
-        "phenotype": "Fasting glucose (FG)",
+        "phenotype": "Random (non-fasting) glucose (RG)",
         "source": "Neale Lab UK Biobank",
         "ancestry": "European",
         "N": 314914
@@ -238,19 +238,6 @@ csv_file = OUTPUT_DIR / "Table1_dataset_overview.csv"
 table1.to_csv(csv_file, index=False)
 
 #################################################
-# EXPORT EXCEL
-#################################################
-
-excel_file = OUTPUT_DIR / "Table1_dataset_overview.xlsx"
-
-table1.to_excel(
-    excel_file,
-    index=False,
-    sheet_name="Table1",
-    engine="openpyxl"
-)
-
-#################################################
 # EXPORT LATEX
 #################################################
 
@@ -273,9 +260,6 @@ print("\nTable 1 generated successfully\n")
 
 print("CSV:")
 print(csv_file)
-
-print("\nExcel:")
-print(excel_file)
 
 print("\nLaTeX:")
 print(latex_file)

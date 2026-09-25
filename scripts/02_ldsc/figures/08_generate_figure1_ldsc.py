@@ -76,7 +76,7 @@ code_to_name = {
     "WC_t": "Waist Circumference",
     "DBP_t": "Diastolic Blood Pressure",
     "SBP_t": "Systolic Blood Pressure",
-    "FG_t": "Fasting Glucose",
+    "FG_t": "Random Glucose",
     "HDL_t": "HDL Cholesterol",
     "LDL_t": "LDL Cholesterol",
     "TGL_t": "Triglycerides"
@@ -267,7 +267,7 @@ heatmap_order = [
     "Waist circumference",
     "Diastolic blood pressure",
     "Systolic blood pressure",
-    "Fasting glucose",
+    "Random glucose",
     "HDL cholesterol",
     "LDL cholesterol",
     "Triglycerides"

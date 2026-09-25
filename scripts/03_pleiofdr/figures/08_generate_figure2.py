@@ -91,7 +91,7 @@ TRAIT_LABELS = {
     "WC": "Waist\nCircumference",
     "SBP": "Systolic Blood\nPressure",
     "DBP": "Diastolic Blood\nPressure",
-    "FG": "Fasting\nGlucose",
+    "FG": "Random\nGlucose",
     "TGL": "Triglycerides",
     "HDL": "HDL\nCholesterol",
     "LDL": "LDL\nCholesterol"

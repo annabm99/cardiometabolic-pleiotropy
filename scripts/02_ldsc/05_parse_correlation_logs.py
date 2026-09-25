@@ -154,7 +154,7 @@ def GenerateVisuals(df, output_dir):
         'TGL_t': 'Triglycerides',
         'LDL_t': 'LDL Cholesterol',
         'HDL_t': 'HDL Cholesterol',
-        'FG_t': 'Fasting Glucose'
+        'FG_t': 'Random Glucose'
     }
     # List of diseases in the data
     diseases = [

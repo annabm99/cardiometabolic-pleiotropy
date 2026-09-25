@@ -3,10 +3,6 @@
 import os
 import pandas as pd
 from statsmodels.stats.multitest import multipletests
-from openpyxl import load_workbook
-from openpyxl.styles import Font
-from openpyxl.utils import get_column_letter
-
 
 # =========================
 # Input / Output
@@ -46,7 +42,7 @@ PHENO_MAP = {
     "WC_t": "Waist circumference",
     "SBP_t": "Systolic blood pressure",
     "DBP_t": "Diastolic blood pressure",
-    "FG_t": "Fasting glucose",
+    "FG_t": "Random glucose",
     "TGL_t": "Triglycerides",
     "HDL_t": "HDL cholesterol",
     "LDL_t": "LDL cholesterol"
@@ -173,73 +169,7 @@ latex_df.to_latex(
 )
 
 
-# =========================
-# Export Excel
-# =========================
-
-print(f"Writing Excel: {OUTPUT_XLSX}")
-
-
-df.to_excel(OUTPUT_XLSX, index=False)
-
-
-# =========================
-# Excel formatting
-# =========================
-
-print("Applying Excel formatting...")
-
-
-wb = load_workbook(OUTPUT_XLSX)
-ws = wb.active
-
-
-# Freeze top row
-ws.freeze_panes = "A2"
-
-
-# Autofilter
-ws.auto_filter.ref = ws.dimensions
-
-
-# Bold header
-for cell in ws[1]:
-    cell.font = Font(bold=True)
-
-
-# Adjust column widths
-for column_cells in ws.columns:
-    length = max(len(str(cell.value)) if cell.value is not None else 0 for cell in column_cells)
-    adjusted_width = min(length + 4, 50)
-    column_letter = get_column_letter(column_cells[0].column)
-    ws.column_dimensions[column_letter].width = adjusted_width
-
-
-# Scientific notation for p-values
-pval_columns = [
-    "E",  # P-value
-    "F",  # FDR-adjusted
-    "G"   # Bonferroni-adjusted
-]
-
-for col in pval_columns:
-    for cell in ws[col][1:]:
-        cell.number_format = '0.00E+00'
-
-
-# Format rg and SE
-numeric_columns = ["C", "D"]
-
-for col in numeric_columns:
-    for cell in ws[col][1:]:
-        cell.number_format = '0.0000'
-
-
-wb.save(OUTPUT_XLSX)
-
-
 print("Done!")
 print(f"Generated files:")
 print(f" - {OUTPUT_CSV}")
-print(f" - {OUTPUT_XLSX}")
 print(f" - {OUTPUT_LATEX}")

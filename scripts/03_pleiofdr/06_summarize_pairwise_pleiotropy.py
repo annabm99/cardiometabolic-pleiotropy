@@ -345,7 +345,7 @@ translation_dict = {
     'TGL_t': 'Triglycerides',
     'LDL_t': 'LDL Cholesterol',
     'HDL_t': 'HDL Cholesterol',
-    'FG_t': 'Fasting Glucose'
+    'FG_t': 'Random Glucose'
 }
 
 traits_order = ['BMI_t', 'WC_t', 'SBP_t', 'DBP_t', 'TGL_t', 'LDL_t', 'HDL_t', 'FG_t']

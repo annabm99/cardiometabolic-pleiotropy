@@ -18,15 +18,15 @@ NamesDict = {
     "DBP_t" : "Diastolic Blood Pressure",
     "TGL_t" : "Triglycerides",
     "LDL_t" : "Low-density Lipoprotein (LDL) Cholesterol",
-    "HDL_t" : "High-density Lipoprotein (HLD) Cholesterol",
-    "FG_t" : "Fasting Glucose"
+    "HDL_t" : "High-density Lipoprotein (HDL) Cholesterol",
+    "FG_t" : "Random (non-fasting) Glucose"
 }
 
 
 def GetInfo(InputFile):
     filename = os.path.basename(InputFile)
     name = filename.split("-")[0]
-    
+
     return filename, name
 
 def SetUpLogging(out_dir, name):
@@ -84,7 +84,7 @@ def PvalDist(df, name, names_dict):
     if p_values.empty:
         print("Warning: No valid p-values to plot!")
         return None  # Return nothing if data is empty
-    
+
     # Create the figure and axis
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -123,7 +123,7 @@ def Manhattan(df, name, names_dict, threshold):
         x_ticks.append(current_pos + (chrom_df['BP'].max() - chrom_df['BP'].min()) / 2)
         genome_positions.extend(chrom_df['BP'] + current_pos)
         current_pos += chrom_df['BP'].max() - chrom_df['BP'].min() + gap  # Add gap between chromosomes
-        
+
     df['genome_pos'] = genome_positions
 
     # Create the plot
@@ -133,7 +133,7 @@ def Manhattan(df, name, names_dict, threshold):
     for chrom in unique_chromosomes:
         chrom_df = df[df['CHR'] == chrom]
         ax.scatter(
-            chrom_df['genome_pos'], chrom_df['log_pval'], 
+            chrom_df['genome_pos'], chrom_df['log_pval'],
             color=chromosome_color_map[chrom], s=10, label=None  # Remove chromosome labels
         )
 

@@ -10,6 +10,15 @@ import numpy as np
 
 DISEASES = ["CAD_d", "HT_d", "STR_d", "T2D_d"]
 
+ALLOWED_QUANTITATIVE_TRAITS = {
+    "BMI_t",
+    "WC_t",
+    "SBP_t",
+    "DBP_t",
+    "FG_t",
+    "TGL_t",
+}
+
 TRANSLATION = {
     "CAD_d": "CAD",
     "HT_d": "HT",
@@ -219,18 +228,38 @@ merged = load_pairwise_files(input_dir)
 print(f"Merged rows: {len(merged)}")
 
 # ---------------------------------------------------------
-# REMOVE HDL / LDL COMPARISONS
+# RETAIN ONLY DISEASE × NON-LIPID QUANTITATIVE-TRAIT PAIRS
 # ---------------------------------------------------------
 
-excluded_traits = {"HDL_t", "LDL_t"}
+valid_pair = (
+    (
+        merged["Phenotype1"].isin(DISEASES)
+        & merged["Phenotype2"].isin(ALLOWED_QUANTITATIVE_TRAITS)
+    )
+    |
+    (
+        merged["Phenotype2"].isin(DISEASES)
+        & merged["Phenotype1"].isin(ALLOWED_QUANTITATIVE_TRAITS)
+    )
+)
 
-merged = merged[
-    ~merged["Phenotype1"].isin(excluded_traits) &
-    ~merged["Phenotype2"].isin(excluded_traits)
-].copy()
+merged = merged[valid_pair].copy()
 
 print(
-    f"Rows after HDL/LDL removal: {len(merged)}"
+    "Rows after restricting to disease × six non-lipid "
+    f"quantitative-trait pairs: {len(merged)}"
+)
+
+print(
+    "Retained phenotype pairs:",
+    sorted(
+        set(
+            zip(
+                merged["Phenotype1"],
+                merged["Phenotype2"],
+            )
+        )
+    ),
 )
 
 snp_col = detect_snp_column(merged)

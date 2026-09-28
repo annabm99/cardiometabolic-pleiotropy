@@ -13,8 +13,7 @@ import pandas as pd
 PROJECT_DIR = Path(
     os.environ.get(
         "CVP_PROJECT_DIR",
-        "/data/samanthafs/scratch/lab_anavarro/anbasquet/"
-        "cardiovascular_pleiotropies"
+        "/path/to/cardiovascular_pleiotropies"
     )
 )
 

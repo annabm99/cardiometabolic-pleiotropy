@@ -60,7 +60,14 @@ DISEASES = {
     },
 }
 
-EXCLUDED_TRAITS = {"HDL_t", "LDL_t"}
+ALLOWED_QUANTITATIVE_TRAITS = {
+    "BMI_t",
+    "WC_t",
+    "SBP_t",
+    "DBP_t",
+    "FG_t",
+    "TGL_t",
+}
 
 LD_R2_THRESHOLD = 0.1
 
@@ -203,12 +210,6 @@ def recover_pairwise_metadata(pairwise_dir):
                 f"Expected two Z columns in {path}; found {z_columns}"
             )
 
-        # Match the no-HDL/LDL aggregation exactly.
-        if any(
-            phenotype in EXCLUDED_TRAITS
-            for phenotype in phenotypes
-        ):
-            continue
 
         fdr_columns = [
             col
@@ -227,6 +228,15 @@ def recover_pairwise_metadata(pairwise_dir):
         for disease in DISEASES:
 
             if disease not in phenotypes:
+                continue
+
+            other_phenotype = next(
+                phenotype
+                for phenotype in phenotypes
+                if phenotype != disease
+            )
+
+            if other_phenotype not in ALLOWED_QUANTITATIVE_TRAITS:
                 continue
 
             required = [

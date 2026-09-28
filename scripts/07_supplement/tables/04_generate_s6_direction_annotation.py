@@ -33,8 +33,7 @@ import pandas as pd
 PROJECT_DIR = Path(
     os.environ.get(
         "CVP_PROJECT_DIR",
-        "/data/samanthafs/scratch/lab_anavarro/"
-        "anbasquet/cardiovascular_pleiotropies",
+        "/path/to/cardiovascular_pleiotropies",
     )
 )
 
@@ -374,9 +373,8 @@ assert (
     .all()
 )
 
-# The established mixed-context sensitivity set contains 66
-# disease-SNP observations.
-assert len(s6b) == 66
+# The established mixed-context sensitivity set contains 62 disease-SNP observations.
+assert len(s6b) == 62
 
 assert (
     (s6b["N Concordant Pairs"] >= 1)

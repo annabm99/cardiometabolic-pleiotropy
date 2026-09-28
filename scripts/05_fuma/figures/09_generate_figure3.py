@@ -1,43 +1,64 @@
 #!/usr/bin/env python3
 
+import os
+from pathlib import Path
+
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.colors import to_rgba
-import os
-from pathlib import Path
-import numpy as np
+
 
 ##############################################################################
 # INPUT / OUTPUT
 ##############################################################################
 
 PROJECT_DIR = Path(
-    os.environ.get("CVP_PROJECT_DIR", "/path/to/cardiovascular_pleiotropies")
+    os.environ.get(
+        "CVP_PROJECT_DIR",
+        "/path/to/cardiovascular_pleiotropies"
+    )
 )
 
 TABLE4 = os.environ.get(
     "CVP_TABLE4_NO_HDL_LDL",
-    str(PROJECT_DIR / "FinalTables/Table4_PleioLoci_noHDL_LDL.csv")
+    str(
+        PROJECT_DIR
+        / "FinalTables"
+        / "Table4_PleioLoci_noHDL_LDL.csv"
+    )
 )
 
 HIGHLIGHT_GENES = os.environ.get(
     "CVP_FIGURE3_HIGHLIGHT_GENES",
-    str(PROJECT_DIR / "FinalTables/Figure3_HighlightGenes_noHDL_LDL.csv")
+    str(
+        PROJECT_DIR
+        / "FinalTables"
+        / "Figure3_HighlightGenes_noHDL_LDL.csv"
+    )
 )
 
 OUTDIR = Path(
-    os.environ.get("CVP_FIGURES_DIR", str(PROJECT_DIR / "Figures"))
+    os.environ.get(
+        "CVP_FIGURES_DIR",
+        str(PROJECT_DIR / "Figures")
+    )
 )
 
-OUTDIR.mkdir(parents=True, exist_ok=True)
+OUTDIR.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
 
 ##############################################################################
-# LOAD TABLE
+# LOAD TABLES
 ##############################################################################
 
 df = pd.read_csv(TABLE4)
 highlight = pd.read_csv(HIGHLIGHT_GENES)
+
 
 ##############################################################################
 # SORT LOCI
@@ -46,8 +67,9 @@ highlight = pd.read_csv(HIGHLIGHT_GENES)
 def chr_sort(x):
     try:
         return int(x)
-    except:
+    except Exception:
         return 999
+
 
 df["chr_order"] = (
     df["Chromosome"]
@@ -56,11 +78,13 @@ df["chr_order"] = (
 )
 
 df = (
-    df.sort_values(
+    df
+    .sort_values(
         ["chr_order", "Merged_Start"]
     )
     .reset_index(drop=True)
 )
+
 
 ##############################################################################
 # DISEASES
@@ -80,12 +104,13 @@ DISEASE_LABELS = {
     "T2D": "Type 2\nDiabetes"
 }
 
+
 ##############################################################################
 # VARIABLE LOCUS WIDTHS
 ##############################################################################
 
 WIDTH_MAP = {
-    1:0.1,
+    1: 0.1,
     2: 1,
     3: 3,
     4: 10
@@ -99,6 +124,11 @@ df["PlotWidth"] = (
     .fillna(1.0)
 )
 
+
+##############################################################################
+# HIGHLIGHTED CONVERGENCE LOCI
+##############################################################################
+
 highlight_loci = set()
 
 for _, row in highlight.iterrows():
@@ -111,12 +141,19 @@ for _, row in highlight.iterrows():
             ml.strip()
         )
 
+# Preserve current visualization behaviour:
+# highlighted recurrent loci are enlarged for visibility.
 df.loc[
     df["MergedLocusID"].isin(
         highlight_loci
     ),
     "PlotWidth"
 ] = 10
+
+
+##############################################################################
+# X POSITIONS
+##############################################################################
 
 x_starts = []
 chrom_boundaries = []
@@ -129,15 +166,21 @@ for chrom, sub in df.groupby(
     sort=False
 ):
 
-    chrom_boundaries.append(current_x)
+    chrom_boundaries.append(
+        current_x
+    )
 
     chr_start = current_x
 
     for _, row in sub.iterrows():
 
-        x_starts.append(current_x)
+        x_starts.append(
+            current_x
+        )
 
-        current_x += row["PlotWidth"]
+        current_x += (
+            row["PlotWidth"]
+        )
 
     chr_end = current_x
 
@@ -150,7 +193,9 @@ for chrom, sub in df.groupby(
 
     current_x += CHR_GAP
 
-chrom_boundaries.append(current_x)
+chrom_boundaries.append(
+    current_x
+)
 
 df["x_start"] = x_starts
 
@@ -159,6 +204,13 @@ df["x_end"] = (
     + df["PlotWidth"]
 )
 
+total_width = current_x
+
+
+##############################################################################
+# LOCUS LOOKUP
+##############################################################################
+
 locus_lookup = {}
 
 for _, row in df.iterrows():
@@ -166,24 +218,19 @@ for _, row in df.iterrows():
     locus_lookup[
         row["MergedLocusID"]
     ] = {
-
-        "x_start":
-            row["x_start"],
-
-        "x_end":
-            row["x_end"]
+        "x_start": row["x_start"],
+        "x_end": row["x_end"]
     }
 
-total_width = current_x
 
 ##############################################################################
-# ENLARGE LOCI USED FOR GENE ANNOTATIONS
+# QC
 ##############################################################################
 
 print(
     df[
         df["MergedLocusID"].isin(
-            ["ML_504","ML_505","ML_506"]
+            ["ML_504", "ML_505", "ML_506"]
         )
     ][[
         "MergedLocusID",
@@ -191,6 +238,7 @@ print(
         "Chromosome"
     ]]
 )
+
 
 ##############################################################################
 # COLORS
@@ -208,10 +256,14 @@ WHITE = np.array(
     to_rgba("white")
 )
 
-def blend(base_color, n_diseases):
+
+def blend(
+    base_color,
+    n_diseases
+):
 
     alpha_map = {
-        1:0.65,
+        1: 0.65,
         2: 0.75,
         3: 0.85,
         4: 0.95
@@ -226,6 +278,7 @@ def blend(base_color, n_diseases):
         WHITE * (1 - alpha)
         + base_color * alpha
     )
+
 
 ##############################################################################
 # GENE ANNOTATION SPANS
@@ -264,23 +317,21 @@ for _, row in highlight.iterrows():
         continue
 
     gene_spans.append({
-
-        "gene":
-            gene,
-
-        "xmin":
-            min(xs),
-
-        "xmax":
-            max(xe)
+        "gene": gene,
+        "xmin": min(xs),
+        "xmax": max(xe)
     })
 
-    if gene == "AS3MT/CNNM2/NT5C2/WBP1L/MARCKSL1P1":
+    if gene in {
+        "AS3MT/CNNM2/NT5C2/WBP1L/MARCKSL1P1",
+        "WBP1L/AS3MT/CNNM2/NT5C2"
+    }:
 
         gene_spans[-1]["gene"] = (
-            "AS3MT/CNNM2/NT5C2/\n"
-            "WBP1L/MARCKSL1P1"
+            "WBP1L/AS3MT\n"
+            "CNNM2/NT5C2"
         )
+
         gene_spans[-1]["label_shift"] = -15
 
     elif gene == "OVOL1/PCNXL3":
@@ -291,8 +342,9 @@ for _, row in highlight.iterrows():
 
         gene_spans[-1]["label_shift"] = 0
 
+
 ##############################################################################
-# PACK INTO TRACKS
+# PACK GENE LABELS INTO TRACKS
 ##############################################################################
 
 gene_spans = sorted(
@@ -314,26 +366,178 @@ for span in gene_spans:
             last["xmax"] + 2
         ):
 
-            track.append(span)
+            track.append(
+                span
+            )
+
             placed = True
             break
 
     if not placed:
-        tracks.append([span])
 
-n_annotation_tracks = len(tracks)
+        tracks.append(
+            [span]
+        )
 
-##############################################################################
-# FIGURE SIZE
-##############################################################################
-
-fig_width = 18
-
-fig_height = 2.5
-
-fig, ax = plt.subplots(
-    figsize=(fig_width, fig_height)
+n_annotation_tracks = len(
+    tracks
 )
+
+
+##############################################################################
+# FIGURE LAYOUT
+##############################################################################
+
+fig = plt.figure(
+    figsize=(18, 3.25)
+)
+
+gs = fig.add_gridspec(
+    nrows=2,
+    ncols=1,
+    height_ratios=[
+        0.16,
+        0.84
+    ],
+    hspace=0.00
+)
+
+# Small dedicated header band, used only for legend
+ax_header = fig.add_subplot(
+    gs[0]
+)
+
+ax_header.axis("off")
+
+# Main genomic panel
+ax = fig.add_subplot(
+    gs[1]
+)
+
+fig.subplots_adjust(
+    left=0.11,
+    right=0.995,
+    top=0.98,
+    bottom=0.14
+)
+
+
+##############################################################################
+# HEADER — LEGEND
+##############################################################################
+
+# Overall legend title
+ax_header.text(
+    0.725,
+    0.86,
+    "No. of diseases",
+    transform=ax_header.transAxes,
+    ha="left",
+    va="center",
+    fontsize=10.5,
+    fontweight="bold"
+)
+
+# Row labels
+ax_header.text(
+    0.725,
+    0.53,
+    "Concordant",
+    transform=ax_header.transAxes,
+    ha="left",
+    va="center",
+    fontsize=9.5
+)
+
+ax_header.text(
+    0.725,
+    0.20,
+    "Discordant",
+    transform=ax_header.transAxes,
+    ha="left",
+    va="center",
+    fontsize=9.5
+)
+
+# Stable centres for the 1–4 disease categories
+legend_centres = {
+    1: 0.835,
+    2: 0.875,
+    3: 0.925,
+    4: 0.982
+}
+
+# Compact but clearly increasing widths
+legend_widths = {
+    1: 0.010,
+    2: 0.022,
+    3: 0.038,
+    4: 0.058
+}
+
+legend_height = 0.085
+
+# Concordant row
+for nd in [1, 2, 3, 4]:
+
+    xc = legend_centres[nd]
+    w = legend_widths[nd]
+
+    ax_header.add_patch(
+        Rectangle(
+            (
+                xc - w / 2,
+                0.53 - legend_height / 2
+            ),
+            w,
+            legend_height,
+            transform=ax_header.transAxes,
+            facecolor=blend(
+                RED_BASE,
+                nd
+            ),
+            edgecolor="none",
+            clip_on=False
+        )
+    )
+
+# Discordant row
+for nd in [1, 2, 3, 4]:
+
+    xc = legend_centres[nd]
+    w = legend_widths[nd]
+
+    ax_header.add_patch(
+        Rectangle(
+            (
+                xc - w / 2,
+                0.20 - legend_height / 2
+            ),
+            w,
+            legend_height,
+            transform=ax_header.transAxes,
+            facecolor=blend(
+                BLUE_BASE,
+                nd
+            ),
+            edgecolor="none",
+            clip_on=False
+        )
+    )
+
+# Numbers shown once only
+for nd in [1, 2, 3, 4]:
+
+    ax_header.text(
+        legend_centres[nd],
+        0.01,
+        str(nd),
+        transform=ax_header.transAxes,
+        ha="center",
+        va="top",
+        fontsize=8.5
+    )
+
 
 ##############################################################################
 # DRAW LOCI
@@ -342,7 +546,6 @@ fig, ax = plt.subplots(
 for _, row in df.iterrows():
 
     x0 = row["x_start"]
-
     width = row["PlotWidth"]
 
     diseases_present = set(
@@ -351,9 +554,14 @@ for _, row in df.iterrows():
         ).split("|")
     )
 
-    n_diseases = row["Number_of_Diseases"]
+    n_diseases = (
+        row["Number_of_Diseases"]
+    )
 
-    if row["Pleiotropy_Type"] == "Concordant":
+    if (
+        row["Pleiotropy_Type"]
+        == "Concordant"
+    ):
 
         color = blend(
             RED_BASE,
@@ -367,17 +575,24 @@ for _, row in df.iterrows():
             n_diseases
         )
 
-    for y, disease in enumerate(DISEASES):
+    for y, disease in enumerate(
+        DISEASES
+    ):
 
         if disease in diseases_present:
+
             facecolor = color
+
         else:
+
             facecolor = "white"
 
         rect = Rectangle(
             (
                 x0,
-                len(DISEASES) - 1 - y
+                len(DISEASES)
+                - 1
+                - y
             ),
             width,
             1,
@@ -385,15 +600,20 @@ for _, row in df.iterrows():
             edgecolor="none"
         )
 
-        ax.add_patch(rect)
-    
+        ax.add_patch(
+            rect
+        )
+
+
 ##############################################################################
 # GENE ANNOTATIONS
 ##############################################################################
 
 base_y = -0.15
 
-for track_idx, track in enumerate(tracks):
+for track_idx, track in enumerate(
+    tracks
+):
 
     y = (
         base_y
@@ -409,55 +629,28 @@ for track_idx, track in enumerate(tracks):
             [xmin, xmax],
             [y, y],
             color="black",
-            linewidth=5,
+            linewidth=4.5,
             solid_capstyle="butt"
         )
 
         xmid = (
             (xmin + xmax) / 2
-            + span.get("label_shift", 0)
-        )
-
-        display_label = span["gene"]
-
-        if (
-            display_label
-            == "WBP1L/AS3MT/CNNM2/NT5C2"
-        ):
-            display_label = (
-                "WBP1L/AS3MT\n"
-                "CNNM2/NT5C2"
+            + span.get(
+                "label_shift",
+                0
             )
+        )
 
         ax.text(
-
             xmid,
-
             y - 0.15,
-
-            display_label,
-
+            span["gene"],
             ha="center",
-
             va="top",
-
-            fontsize=12,
-
+            fontsize=10.5,
             linespacing=1.0
-
         )
 
-##############################################################################
-# CHROMOSOME SEPARATORS
-##############################################################################
-
-# for boundary in chrom_boundaries:
-
-#     ax.axvline(
-#         boundary,
-#         color="black",
-#         linewidth=0.6
-#     )
 
 ##############################################################################
 # AXES
@@ -469,290 +662,172 @@ ax.set_xlim(
 )
 
 bottom_margin = (
-    -0.7
-    - n_annotation_tracks * 0.45
+    -0.70
+    - n_annotation_tracks
+    * 0.45
 )
 
+# Extra upper headroom keeps chromosome labels separated
+# from the legend/header band.
 ax.set_ylim(
     bottom_margin,
-    len(DISEASES)
+    len(DISEASES) + 0.90
 )
 
 ax.set_xticks([])
 
 ax.set_yticks(
-    np.arange(len(DISEASES))
+    np.arange(
+        len(DISEASES)
+    )
     + 0.5
 )
 
 ax.set_yticklabels(
     [
         DISEASE_LABELS[x]
-        for x in DISEASES[::-1]
+        for x
+        in DISEASES[::-1]
     ],
-    fontsize=12,
+    fontsize=11.5,
     fontweight="bold"
 )
+
 
 ##############################################################################
 # CHROMOSOME LABELS
 ##############################################################################
 
 problem_chr = {
-    "13","14","18", "19",
-    "20","21","22"
+    "13",
+    "14",
+    "18",
+    "19",
+    "20",
+    "21",
+    "22"
 }
 
 for chrom, center in chrom_centers:
 
-    rot = 45 if str(chrom) in problem_chr else 0
+    rot = (
+        45
+        if str(chrom)
+        in problem_chr
+        else 0
+    )
 
     ax.text(
         center,
-        len(DISEASES)+0.12,
+        len(DISEASES) + 0.10,
         f"chr{chrom}",
         ha="center",
         va="bottom",
-        fontsize=10,
+        fontsize=9.5,
         rotation=rot
     )
 
-##############################################################################
-# TITLE
-##############################################################################
-
-ax.set_title(
-    "Pleiotropic Locus Sharing Across Cardiovascular Diseases",
-    fontsize=14,
-    fontweight="bold",
-    pad=70
-)
 
 ##############################################################################
 # CLEAN LOOK
 ##############################################################################
 
-ax.spines["top"].set_visible(False)
-ax.spines["right"].set_visible(False)
-ax.spines["bottom"].set_visible(False)
+ax.spines[
+    "top"
+].set_visible(False)
+
+ax.spines[
+    "right"
+].set_visible(False)
+
+ax.spines[
+    "bottom"
+].set_visible(False)
+
+
+##############################################################################
+# OUTPUT FILES
+##############################################################################
+
+pdf_file = (
+    OUTDIR
+    / "Figure3_ConvergenceLoci.pdf"
+)
+
+svg_file = (
+    OUTDIR
+    / "Figure3_ConvergenceLoci.svg"
+)
+
+png_file = (
+    OUTDIR
+    / "Figure3_ConvergenceLoci.png"
+)
+
 
 ##############################################################################
 # SAVE
 ##############################################################################
 
-pdf_file = (
-    OUTDIR /
-    "Figure3_LocusMatrix_WidthWeighted.pdf"
-)
-
-svg_file = (
-    OUTDIR /
-    "Figure3_LocusMatrix_WidthWeighted.svg"
-)
-
-png_file = (
-    OUTDIR /
-    "Figure3_LocusMatrix_WidthWeighted.png"
-)
-
-plt.savefig(
+fig.savefig(
     pdf_file,
     bbox_inches="tight"
 )
 
-plt.savefig(
+fig.savefig(
     svg_file,
     bbox_inches="tight"
 )
 
-plt.savefig(
+fig.savefig(
     png_file,
     dpi=600,
     bbox_inches="tight"
 )
 
-plt.close()
+plt.close(fig)
 
-##############################################################################
-# FIGURE 3 LEGEND
-##############################################################################
-
-fig_leg, ax_leg = plt.subplots(
-    figsize=(7, 2.5)
-)
-
-ax_leg.axis("off")
-
-##############################################################################
-# TITLE
-##############################################################################
-
-ax_leg.text(
-    0,
-    1.85,
-    "Pleiotropy degree (number of diseases)",
-    fontsize=18,
-    fontweight="bold"
-)
-
-##############################################################################
-# SAME WIDTH RATIOS AS MAIN FIGURE
-##############################################################################
-
-legend_widths = {
-    1: 0.15,
-    2: 0.50,
-    3: 0.90,
-    4: 1.30
-}
-
-##############################################################################
-# CONCORDANT
-##############################################################################
-
-ax_leg.text(
-    0,
-    1.15,
-    "Concordant pleiotropies",
-    fontsize=13,
-    va="center"
-)
-
-x = 4.0
-
-for nd in [1,2,3,4]:
-
-    w = legend_widths[nd]
-
-    ax_leg.add_patch(
-        Rectangle(
-            (x, 1.00),
-            w,
-            0.28,
-            facecolor=blend(
-                RED_BASE,
-                nd
-            ),
-            edgecolor="none"
-        )
-    )
-
-    ax_leg.text(
-        x + w/2,
-        0.83,
-        str(nd),
-        ha="center",
-        fontsize=11
-    )
-
-    x += w + 0.40
-
-##############################################################################
-# DISCORDANT
-##############################################################################
-
-ax_leg.text(
-    0,
-    0.35,
-    "Discordant pleiotropies",
-    fontsize=13,
-    va="center"
-)
-
-x = 4.0
-
-for nd in [1,2,3,4]:
-
-    w = legend_widths[nd]
-
-    ax_leg.add_patch(
-        Rectangle(
-            (x, 0.20),
-            w,
-            0.28,
-            facecolor=blend(
-                BLUE_BASE,
-                nd
-            ),
-            edgecolor="none"
-        )
-    )
-
-    ax_leg.text(
-        x + w/2,
-        0.03,
-        str(nd),
-        ha="center",
-        fontsize=11
-    )
-
-    x += w + 0.40
-
-##############################################################################
-# LIMITS
-##############################################################################
-
-ax_leg.set_xlim(
-    -0.1,
-    9.0
-)
-
-ax_leg.set_ylim(
-    -0.25,
-    2.15
-)
-
-##############################################################################
-# SAVE
-##############################################################################
-
-legend_pdf = (
-    OUTDIR /
-    "Figure3_Legend.pdf"
-)
-
-legend_svg = (
-    OUTDIR /
-    "Figure3_Legend.svg"
-)
-
-legend_png = (
-    OUTDIR /
-    "Figure3_Legend.png"
-)
-
-fig_leg.savefig(
-    legend_pdf,
-    bbox_inches="tight"
-)
-
-fig_leg.savefig(
-    legend_svg,
-    bbox_inches="tight"
-)
-
-fig_leg.savefig(
-    legend_png,
-    dpi=600,
-    bbox_inches="tight"
-)
-
-plt.close(fig_leg)
 
 ##############################################################################
 # QC
 ##############################################################################
 
-print("\n====================================")
-print("FIGURE CREATED")
-print("====================================\n")
+print(
+    "\n===================================="
+)
 
-print(f"Loci plotted: {len(df):,}")
-print(f"Total plot width: {total_width:.1f}")
+print(
+    "FIGURE CREATED"
+)
 
-print("\nOutputs:")
-print(pdf_file)
-print(svg_file)
-print(png_file)
+print(
+    "====================================\n"
+)
 
-print("\nDone.")
+print(
+    f"Loci plotted: {len(df):,}"
+)
+
+print(
+    f"Total plot width: {total_width:.1f}"
+)
+
+print(
+    "\nOutputs:"
+)
+
+print(
+    pdf_file
+)
+
+print(
+    svg_file
+)
+
+print(
+    png_file
+)
+
+print(
+    "\nDone."
+)

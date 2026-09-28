@@ -12,9 +12,6 @@ Outputs
 -------
 Figure2_PleioMatrix.svg
 Figure2_PleioMatrix.png
-
-Figure2_legend.svg
-Figure2_legend.png
 """
 
 import os
@@ -448,7 +445,7 @@ ax0.text(
 fig.subplots_adjust(
     left=0.23,
     right=0.98,
-    top=0.74,
+    top=0.73,
     bottom=0.10
 )
 
@@ -539,6 +536,23 @@ for disease, matrix_ax in zip(DISEASES, bottom_axes):
         fontsize=11,
         fontweight="bold"
     )
+
+# =============================================================================
+# EMBEDDED LEGEND
+# =============================================================================
+
+legend_handles = [
+    Patch(facecolor=RED, edgecolor="none", label="Concordant"),
+    Patch(facecolor=BLUE, edgecolor="none", label="Discordant"),
+]
+
+fig.legend(
+    handles=legend_handles,
+    loc="upper left",
+    bbox_to_anchor=(0.1, 0.75),
+    frameon=False,
+    fontsize=12
+)
 
 # =============================================================================
 # EXPORT

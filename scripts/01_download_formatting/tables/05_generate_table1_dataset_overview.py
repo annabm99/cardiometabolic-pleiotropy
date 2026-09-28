@@ -47,9 +47,9 @@ metadata = {
         "domain": "Clinical disease",
         "source": "DIAGRAM",
         "ancestry": "European",
-        "N": 441894,
-        "Cases": 18197,
-        "Controls": 423697
+        "N": 455313,
+        "Cases": 55005,
+        "Controls": 400308
     },
 
     "HT_d": {

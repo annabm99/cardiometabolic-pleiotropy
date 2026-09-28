@@ -15,9 +15,9 @@ phenotypes:
     abbreviation: T2D
     type: disease
     source: T2D-noUKBB
-    n_total: 441894
-    n_cases: 18197
-    n_controls: 423697
+    n_total: 455313
+    n_cases: 55005
+    n_controls: 400308
   HT_d:
     label: Hypertension
     abbreviation: HT

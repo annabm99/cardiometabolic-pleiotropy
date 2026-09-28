@@ -1,7 +1,6 @@
 # Pipeline Overview
 
-The analysis is organized into six stages. Scripts within each directory are
-numbered according to their approximate execution order.
+The analysis is organised into six main analytical stages, followed by a supplementary-table generation stage.
 
 | Stage | Analysis | Main output |
 | --- | --- | --- |
@@ -11,6 +10,7 @@ numbered according to their approximate execution order.
 | `04_directionality` | Concordant/discordant effect classification | Directionality summaries |
 | `05_fuma` | Clumping, convergence analysis and FUMA preparation | Mapped loci and genes |
 | `06_enrichment` | Functional annotation and pathway enrichment | Functional summaries |
+| `07_supplement` | Assembly of publication supplementary tables | Supplementary tables |
 
 Some steps rely on external software rather than scripts included in this
 repository. These transitions are marked by `external_*.md` or `manual_*.md`
